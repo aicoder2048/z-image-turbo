@@ -76,6 +76,69 @@ def test_generate_image_calls_mps_sync(tmp_path: Path):
         mock_sync.assert_called_once()
 
 
+# ============ Device Resolution Tests ============
+
+
+def test_resolve_device_cuda_available():
+    """测试 CUDA 可用时的设备选择"""
+    from z_image.generator import resolve_device
+
+    with patch("z_image.generator.torch.cuda.is_available", return_value=True):
+        with patch("z_image.generator.torch.backends.mps.is_available", return_value=False):
+            with patch("z_image.generator.platform.system", return_value="Windows"):
+                # auto 模式下优先选择 CUDA
+                assert resolve_device("auto", 1024, 1024) == "cuda"
+                # 显式指定 cuda
+                assert resolve_device("cuda", 1024, 1024) == "cuda"
+                # 显式指定 cpu
+                assert resolve_device("cpu", 1024, 1024) == "cpu"
+
+
+def test_resolve_device_cuda_not_available():
+    """测试 CUDA 不可用时显式指定 cuda 应报错"""
+    from z_image.generator import resolve_device
+
+    with patch("z_image.generator.torch.cuda.is_available", return_value=False):
+        with patch("z_image.generator.torch.backends.mps.is_available", return_value=False):
+            with patch("z_image.generator.platform.system", return_value="Windows"):
+                with pytest.raises(ValueError, match="CUDA 不可用"):
+                    resolve_device("cuda", 1024, 1024)
+
+
+def test_resolve_device_auto_fallback_to_cpu():
+    """测试无 GPU 时 auto 模式回退到 CPU"""
+    from z_image.generator import resolve_device
+
+    with patch("z_image.generator.torch.cuda.is_available", return_value=False):
+        with patch("z_image.generator.torch.backends.mps.is_available", return_value=False):
+            with patch("z_image.generator.platform.system", return_value="Linux"):
+                assert resolve_device("auto", 1024, 1024) == "cpu"
+
+
+def test_resolve_device_mps_on_mac():
+    """测试 Mac 上 MPS 设备选择"""
+    from z_image.generator import resolve_device
+
+    with patch("z_image.generator.torch.cuda.is_available", return_value=False):
+        with patch("z_image.generator.torch.backends.mps.is_available", return_value=True):
+            with patch("z_image.generator.platform.system", return_value="Darwin"):
+                # auto 模式下选择 MPS
+                assert resolve_device("auto", 1024, 1024) == "mps"
+                # 显式指定 mps
+                assert resolve_device("mps", 1024, 1024) == "mps"
+
+
+def test_resolve_device_cuda_priority_over_mps():
+    """测试 CUDA 优先级高于 MPS（理论上不会同时可用，但测试逻辑正确性）"""
+    from z_image.generator import resolve_device
+
+    with patch("z_image.generator.torch.cuda.is_available", return_value=True):
+        with patch("z_image.generator.torch.backends.mps.is_available", return_value=True):
+            with patch("z_image.generator.platform.system", return_value="Darwin"):
+                # auto 模式下 CUDA 优先
+                assert resolve_device("auto", 1024, 1024) == "cuda"
+
+
 # ============ Prompt Loading Tests ============
 
 

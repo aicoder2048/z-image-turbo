@@ -37,26 +37,31 @@ def main():
 
     # 构建设备状态信息
     device_info = f"设备: {device}"
-    if args.force_mps and device == "mps":
+    if device == "cuda":
+        import torch
+        gpu_name = torch.cuda.get_device_name(0)
+        device_info += f" ({gpu_name})"
+    elif args.force_mps and device == "mps":
         device_info += " (--force-mps 已启用)"
     elif args.device == "auto" and device == "cpu":
-        device_info += " (高分辨率自动切换)"
+        device_info += " (无 GPU 可用)"
     print(device_info)
 
-    # 警告信息
+    # MPS 特定警告信息（CUDA 没有分辨率限制）
     total_pixels = width * height
     from .generator import MPS_MAX_PIXELS
-    if args.device == "auto" and device == "cpu" and total_pixels > MPS_MAX_PIXELS:
-        print("\n[WARNING] CPU 模式已自动启用")
-        print(f"  分辨率 {width}x{height} ({total_pixels:,} 像素) 超过 MPS 安全限制 ({MPS_MAX_PIXELS:,} 像素)")
-        print("  CPU 模式较慢但支持任意分辨率")
-        print("  如需强制使用 MPS，可添加 --force-mps（可能导致崩溃）\n")
+    if device == "mps" or (args.device == "auto" and device == "cpu"):
+        if args.device == "auto" and device == "cpu" and total_pixels > MPS_MAX_PIXELS:
+            print("\n[WARNING] CPU 模式已自动启用")
+            print(f"  分辨率 {width}x{height} ({total_pixels:,} 像素) 超过 MPS 安全限制 ({MPS_MAX_PIXELS:,} 像素)")
+            print("  CPU 模式较慢但支持任意分辨率")
+            print("  如需强制使用 MPS，可添加 --force-mps（可能导致崩溃）\n")
 
-    if args.force_mps and total_pixels > MPS_MAX_PIXELS:
-        print("\n[WARNING] --force-mps 已启用，分辨率超过 MPS 安全限制")
-        print(f"  当前: {width}x{height} ({total_pixels:,} 像素)")
-        print(f"  限制: ~{MPS_MAX_PIXELS:,} 像素")
-        print("  这是实验性功能，可能导致程序崩溃或系统不稳定\n")
+        if args.force_mps and total_pixels > MPS_MAX_PIXELS:
+            print("\n[WARNING] --force-mps 已启用，分辨率超过 MPS 安全限制")
+            print(f"  当前: {width}x{height} ({total_pixels:,} 像素)")
+            print(f"  限制: ~{MPS_MAX_PIXELS:,} 像素")
+            print("  这是实验性功能，可能导致程序崩溃或系统不稳定\n")
 
     # 2. 下载/检查模型
     print("检查模型...")

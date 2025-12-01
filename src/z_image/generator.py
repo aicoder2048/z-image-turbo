@@ -40,27 +40,42 @@ def resolve_device(device: str, width: int, height: int, force_mps: bool = False
     解析设备选择。
 
     Args:
-        device: 用户指定的设备 ("auto", "mps", "cpu")
+        device: 用户指定的设备 ("auto", "cuda", "mps", "cpu")
         width: 图像宽度
         height: 图像高度
         force_mps: 强制使用 MPS，忽略分辨率限制（实验性，可能导致崩溃）
 
     Returns:
-        实际使用的设备 ("mps" 或 "cpu")
+        实际使用的设备 ("cuda", "mps" 或 "cpu")
 
     Raises:
-        ValueError: 当 device="mps" 但分辨率超过 MPS 限制时（除非 force_mps=True）
+        ValueError: 当请求的 GPU 设备不可用时
     """
-    if platform.system() != "Darwin":
-        return "cpu"
+    is_mac = platform.system() == "Darwin"
+    cuda_available = torch.cuda.is_available()
+    mps_available = is_mac and torch.backends.mps.is_available()
 
     total_pixels = width * height
     exceeds_mps_limit = total_pixels > MPS_MAX_PIXELS
 
+    # 显式指定 CPU
     if device == "cpu":
         return "cpu"
 
+    # 显式指定 CUDA
+    if device == "cuda":
+        if not cuda_available:
+            raise ValueError(
+                "CUDA 不可用。请确保：\n"
+                "1. 已安装 NVIDIA 显卡驱动\n"
+                "2. 已安装 CUDA 版 PyTorch: pip install torch --index-url https://download.pytorch.org/whl/cu121"
+            )
+        return "cuda"
+
+    # 显式指定 MPS
     if device == "mps":
+        if not mps_available:
+            raise ValueError("MPS 不可用。MPS 仅在 macOS 上支持。")
         if exceeds_mps_limit and not force_mps:
             raise ValueError(
                 f"分辨率 {width}x{height} ({total_pixels:,} 像素) 超过 Mac MPS 限制。\n"
@@ -70,12 +85,19 @@ def resolve_device(device: str, width: int, height: int, force_mps: bool = False
             )
         return "mps"
 
-    # device == "auto"
-    if force_mps:
+    # device == "auto" - 自动选择最佳设备
+    # 优先级: CUDA > MPS > CPU
+    if cuda_available:
+        return "cuda"
+
+    if mps_available:
+        if force_mps:
+            return "mps"
+        if exceeds_mps_limit:
+            return "cpu"
         return "mps"
-    if exceeds_mps_limit:
-        return "cpu"
-    return "mps"
+
+    return "cpu"
 
 
 def load_pipeline(model_path: Path, device: str = "mps") -> tuple[ZImagePipeline, str]:
@@ -84,20 +106,28 @@ def load_pipeline(model_path: Path, device: str = "mps") -> tuple[ZImagePipeline
 
     Args:
         model_path: 本地模型路径
-        device: 目标设备 ("mps" 或 "cpu")
+        device: 目标设备 ("cuda", "mps" 或 "cpu")
 
     Returns:
         (ZImagePipeline 实例, 实际使用的设备)
     """
+    # 根据设备选择最佳 dtype
+    # - CUDA: bfloat16 性能最佳
+    # - MPS/CPU: float32 避免 NaN latents 导致黑色图像
+    if device == "cuda":
+        dtype = torch.bfloat16
+    else:
+        dtype = torch.float32
+
     pipe = ZImagePipeline.from_pretrained(
         str(model_path),
-        torch_dtype=torch.float32,  # float32 避免 NaN latents 导致黑色图像
+        torch_dtype=dtype,
         low_cpu_mem_usage=True,
         local_files_only=True,  # 仅从本地加载
     )
     pipe.to(device)
 
-    # MPS 模式启用 attention slicing 优化
+    # MPS 模式启用 attention slicing 优化（CUDA 有更好的显存管理，不需要）
     if device == "mps":
         pipe.enable_attention_slicing(slice_size="max")
 
@@ -123,7 +153,7 @@ def generate_image(
         height: 图像高度
         seed: 随机种子（None 则自动生成）
         output_dir: 输出目录
-        device: 计算设备 ("mps" 或 "cpu")
+        device: 计算设备 ("cuda", "mps" 或 "cpu")
 
     Returns:
         (PIL Image, seed, 保存路径)
@@ -144,8 +174,10 @@ def generate_image(
         generator=generator,
     ).images[0]
 
-    # MPS 同步 - 确保 GPU 操作完成后再保存图像
-    if device == "mps":
+    # GPU 同步 - 确保 GPU 操作完成后再保存图像
+    if device == "cuda":
+        torch.cuda.synchronize()
+    elif device == "mps":
         torch.mps.synchronize()
 
     # 构建输出路径: output/YYMMDD/hhmmss_<seed>_nbp.png

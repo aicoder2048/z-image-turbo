@@ -222,9 +222,9 @@ def parse_args() -> argparse.Namespace:
         "--device",
         "-d",
         type=str,
-        choices=["auto", "mps", "cpu"],
+        choices=["auto", "cuda", "mps", "cpu"],
         default="auto",
-        help="计算设备: auto=自动选择, mps=GPU加速, cpu=CPU模式(慢但支持高分辨率)",
+        help="计算设备: auto=自动选择, cuda=NVIDIA GPU, mps=Mac GPU, cpu=CPU模式",
     )
     parser.add_argument(
         "--force-mps",

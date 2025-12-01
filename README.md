@@ -1,14 +1,14 @@
 # Z-Image-Turbo
 
-A command-line tool for text-to-image generation using Alibaba's [Z-Image-Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo) model, optimized for Apple Silicon (M1/M2/M3/M4) Macs.
+A command-line tool for text-to-image generation using Alibaba's [Z-Image-Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo) model, with GPU acceleration support for NVIDIA CUDA and Apple Silicon MPS.
 
 ## Features
 
 - **Fast Generation**: 9-step inference for quick image generation
-- **Apple Silicon Optimized**: Native MPS (Metal Performance Shaders) support
+- **Multi-GPU Support**: NVIDIA CUDA (Windows/Linux) and Apple MPS (macOS)
 - **Bilingual Prompts**: Supports both Chinese and English prompts
 - **Flexible Resolution**: Multiple preset aspect ratios and custom resolutions
-- **Auto CPU Fallback**: Automatically switches to CPU for high resolutions
+- **Auto Device Selection**: Automatically selects best available GPU
 - **Reproducible Results**: Seed support for consistent outputs
 
 ## Installation
@@ -31,6 +31,20 @@ uv sync
 # Download model (optional, will auto-download on first run)
 uv run z-image --download-only
 ```
+
+### Windows CUDA Setup (Optional)
+
+For NVIDIA GPU acceleration on Windows, install PyTorch with CUDA support:
+
+```bash
+# Install CUDA-enabled PyTorch (CUDA 12.1)
+pip install torch --index-url https://download.pytorch.org/whl/cu121
+
+# Or for CUDA 11.8
+pip install torch --index-url https://download.pytorch.org/whl/cu118
+```
+
+> **Note**: The default PyTorch installation is CPU-only. CUDA support requires separate installation.
 
 ## Quick Start
 
@@ -55,7 +69,7 @@ uv run z-image -p "sunset over ocean" -n 3
 
 ```
 z-image [-h] [--prompt TEXT] [--ratio RATIO] [--resolution WxH]
-        [--device {auto,mps,cpu}] [--force-mps] [--seed INT] [--count N]
+        [--device {auto,cuda,mps,cpu}] [--force-mps] [--seed INT] [--count N]
         [--download-only] [--model-dir DIR] [--output-dir DIR]
 ```
 
@@ -66,7 +80,7 @@ z-image [-h] [--prompt TEXT] [--ratio RATIO] [--resolution WxH]
 | `--prompt` | `-p` | Image generation prompt (Chinese/English) |
 | `--ratio` | `-r` | Aspect ratio: 1:1, 16:9, 9:16, 4:3, 3:4, 3:2, 2:3 |
 | `--resolution` | | Custom resolution, e.g., 1024x768 (overrides --ratio) |
-| `--device` | `-d` | Device: auto, mps, cpu (default: auto) |
+| `--device` | `-d` | Device: auto, cuda, mps, cpu (default: auto) |
 | `--force-mps` | | [Experimental] Force MPS even if resolution exceeds limit (may crash) |
 | `--seed` | `-s` | Random seed for reproducibility |
 | `--count` | `-n` | Number of images to generate (default: 1) |
