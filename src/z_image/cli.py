@@ -1,6 +1,8 @@
 """命令行接口模块"""
 
 import argparse
+import json
+from pathlib import Path
 
 # 预设宽高比
 ASPECT_RATIOS = {
@@ -44,6 +46,70 @@ RESOLUTION_PRESETS = [
 ]
 
 
+def load_prompts_from_json(file_path: Path) -> list[str]:
+    """
+    从 JSON 文件加载 prompts。
+
+    期望格式: [{"description": "prompt1", ...}, {"description": "prompt2", ...}]
+
+    Args:
+        file_path: JSON 文件路径
+
+    Returns:
+        提取的 description 字符串列表
+    """
+    with open(file_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    prompts = []
+    for i, item in enumerate(data):
+        if isinstance(item, dict) and "description" in item:
+            prompts.append(item["description"])
+        else:
+            print(f"警告: 跳过第 {i + 1} 项，缺少 'description' 字段")
+
+    return prompts
+
+
+def load_prompts_from_text(file_path: Path) -> list[str]:
+    """
+    从文本文件加载 prompts（每行一个）。
+
+    Args:
+        file_path: 文本文件路径
+
+    Returns:
+        非空行的列表
+    """
+    with open(file_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    return [line.strip() for line in lines if line.strip()]
+
+
+def load_prompts(file_path: Path) -> list[str]:
+    """
+    根据文件扩展名加载 prompts。
+
+    Args:
+        file_path: 文件路径 (.json 或 .txt)
+
+    Returns:
+        prompts 列表
+
+    Raises:
+        ValueError: 不支持的文件扩展名
+    """
+    suffix = file_path.suffix.lower()
+
+    if suffix == ".json":
+        return load_prompts_from_json(file_path)
+    elif suffix == ".txt":
+        return load_prompts_from_text(file_path)
+    else:
+        raise ValueError(f"不支持的文件格式: {suffix}（仅支持 .json 和 .txt）")
+
+
 def parse_resolution(ratio: str | None, resolution: str | None) -> tuple[int, int]:
     """
     解析分辨率参数。
@@ -77,8 +143,8 @@ def parse_args() -> argparse.Namespace:
   %(prog)s -p "一只猫在太空中漂浮"
   %(prog)s -p "山水风景" --ratio 16:9
   %(prog)s -p "人像照片" --resolution 768x1344 --seed 42
-  %(prog)s -p "iPhone壁纸" --resolution 768x1664
-  %(prog)s -p "YouTube封面" --resolution 1920x1080
+  %(prog)s -f input/prompts/prompts.json          # 从 JSON 文件批量生成
+  %(prog)s -f prompts.txt -n 2                    # 每个 prompt 生成 2 张
 
 常用分辨率参考:
   分辨率        比例      使用场景
@@ -116,14 +182,22 @@ def parse_args() -> argparse.Namespace:
         """,
     )
 
-    # 必需参数（download-only 模式除外）
+    # Prompt 输入（二选一）
     parser.add_argument(
         "--prompt",
         "-p",
         type=str,
         default=None,
         metavar="文本",
-        help="图像生成提示词（支持中英文）",
+        help="图像生成提示词（支持中英文），与 -f 互斥",
+    )
+    parser.add_argument(
+        "--prompts-file",
+        "-f",
+        type=str,
+        default=None,
+        metavar="文件",
+        help="从文件读取 prompts：JSON 文件提取 'description' 字段，TXT 文件每行一个 prompt（与 -p 互斥）",
     )
 
     # 分辨率相关
@@ -199,8 +273,11 @@ def parse_args() -> argparse.Namespace:
 
     args = parser.parse_args()
 
-    # 验证：非 download-only 模式下 prompt 必需
-    if not args.download_only and not args.prompt:
-        parser.error("--prompt/-p 是必需的（除非使用 --download-only）")
+    # 验证 prompt 输入
+    if not args.download_only:
+        if args.prompt and args.prompts_file:
+            parser.error("--prompt/-p 和 --prompts-file/-f 不能同时使用")
+        if not args.prompt and not args.prompts_file:
+            parser.error("必须指定 --prompt/-p 或 --prompts-file/-f（除非使用 --download-only）")
 
     return args

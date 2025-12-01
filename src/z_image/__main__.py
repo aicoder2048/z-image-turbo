@@ -2,7 +2,9 @@
 
 from pathlib import Path
 
-from .cli import parse_args, parse_resolution
+from generate_prompts.generator import is_prompt_problematic, sanitize_prompt
+
+from .cli import load_prompts, parse_args, parse_resolution
 from .downloader import download_model
 from .generator import (
     align_resolution,
@@ -64,29 +66,66 @@ def main():
     if args.download_only:
         return
 
-    # 3. 加载 Pipeline
+    # 3. 加载 prompts
+    if args.prompts_file:
+        prompts_file = Path(args.prompts_file)
+        print(f"从文件加载 prompts: {prompts_file}")
+        prompts = load_prompts(prompts_file)
+        if not prompts:
+            print("错误: 文件中没有有效的 prompts")
+            return
+        print(f"已加载 {len(prompts)} 个 prompts")
+    else:
+        prompts = [args.prompt]
+
+    # 4. 加载 Pipeline
     print("加载 Pipeline...")
     pipe, device = load_pipeline(model_path, device=device)
     print("Pipeline 已加载")
 
-    # 4. 生成图像
-    for i in range(args.count):
-        seed = args.seed
-        if args.count > 1 and args.seed is not None:
-            seed = args.seed + i  # 多图时递增种子
+    # 5. 生成图像
+    total_images = len(prompts) * args.count
+    image_num = 0
 
-        print(f"\n生成图像 [{i + 1}/{args.count}]...")
-        image, used_seed, output_path = generate_image(
-            pipe=pipe,
-            prompt=args.prompt,
-            width=width,
-            height=height,
-            seed=seed,
-            output_dir=output_dir,
-            device=device,
-        )
-        print(f"已保存: {output_path}")
-        print(f"种子: {used_seed}")
+    for prompt_idx, original_prompt in enumerate(prompts):
+        # Sanitize prompt 以移除可能导致生成问题的特殊字符
+        prompt = sanitize_prompt(original_prompt)
+
+        # 检查 sanitize 后的 prompt 是否有效
+        if not prompt or prompt.strip() == "":
+            print(f"\n[跳过] Prompt {prompt_idx + 1}: sanitize 后为空")
+            continue
+
+        if is_prompt_problematic(prompt):
+            print(f"\n[警告] Prompt {prompt_idx + 1} 可能包含问题字符，尝试继续生成...")
+
+        for i in range(args.count):
+            image_num += 1
+            seed = args.seed
+            if args.seed is not None:
+                # 每张图使用不同的种子
+                seed = args.seed + image_num - 1
+
+            # 显示进度
+            if len(prompts) > 1:
+                print(f"\n生成图像 [Prompt {prompt_idx + 1}/{len(prompts)}, Image {i + 1}/{args.count}] ({image_num}/{total_images})...")
+                # 显示 prompt 前 50 个字符
+                prompt_preview = prompt[:50] + "..." if len(prompt) > 50 else prompt
+                print(f"Prompt: {prompt_preview}")
+            else:
+                print(f"\n生成图像 [{i + 1}/{args.count}]...")
+
+            image, used_seed, output_path = generate_image(
+                pipe=pipe,
+                prompt=prompt,
+                width=width,
+                height=height,
+                seed=seed,
+                output_dir=output_dir,
+                device=device,
+            )
+            print(f"已保存: {output_path}")
+            print(f"种子: {used_seed}")
 
 
 if __name__ == "__main__":
