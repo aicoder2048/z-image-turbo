@@ -8,7 +8,8 @@ Execute the `Run`, `Read` and `Report` sections to understand the codebase then 
 
 ## Run
 
-Read and execute the .claude/commands/prime.md file top to bottom
+- Read and execute the .claude/commands/prime.md file top to bottom
+- Read and execute the .claude/commands/prime_diffusers.md file top to bottom
 
 ## Read
 

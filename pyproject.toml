@@ -12,10 +12,14 @@ dependencies = [
     "safetensors",
     "huggingface-hub>=0.20.0",
     "tqdm",
+    "termcolor>=3.2.0",
+    "python-dotenv>=1.2.1",
+    "pydantic-ai>=1.25.1",
 ]
 
 [project.scripts]
 z-image = "z_image.__main__:main"
+generate_prompts = "generate_prompts.cli:main"
 
 [tool.uv.sources]
 diffusers = { git = "https://github.com/huggingface/diffusers" }
@@ -30,4 +34,4 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/z_image"]
+packages = ["src/z_image", "src/generate_prompts"]

@@ -8,3 +8,11 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Input/output directories
+input/
+output/
+models/
+
+# Environment files
+.env

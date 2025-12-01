@@ -292,6 +292,74 @@ rm -rf models/
 uv run z-image --download-only
 ```
 
+## Generate Prompts
+
+This project includes a prompt generation tool that uses LLM (via Ollama) to create detailed image generation prompts from templates.
+
+### Setup
+
+1. Copy `.env.example` to `.env` and configure your Ollama settings:
+   ```bash
+   # .env
+   OLLAMA_URL=http://localhost:11434/v1
+   OLLAMA_MODEL=dolphin3:latest
+   ```
+
+2. Create a template file at `input/prompt_template.json` (a sample is provided)
+
+### Usage
+
+```bash
+# Interactive mode
+uv run generate_prompts
+
+# Generate 5 variations
+uv run generate_prompts -n 5
+
+# Use custom template file
+uv run generate_prompts -t my_template.json
+
+# Custom output file
+uv run generate_prompts -o input/prompts/my_prompts.json
+```
+
+### Template Format
+
+Templates use JSON format with support for random selection using `|`:
+
+```json
+{
+  "subject": {
+    "type": "person | animal",
+    "age": "young | old",
+    "expression": "smile | serious"
+  },
+  "clothing": {
+    "top": "t-shirt | sweater",
+    "bottom": "jeans | shorts"
+  },
+  "environment": "indoor | outdoor | beach",
+  "style": "photo-realistic",
+  "camera_angle": "medium shot | close-up",
+  "lighting": "natural | dramatic"
+}
+```
+
+### Prompt Sanitization
+
+The module includes utilities for sanitizing prompts before image generation:
+
+```python
+from generate_prompts.generator import sanitize_prompt, is_prompt_problematic
+
+# Check if prompt might cause issues
+if is_prompt_problematic(prompt):
+    print("Warning: Prompt may cause generation issues")
+
+# Clean up problematic characters
+clean_prompt = sanitize_prompt(prompt)
+```
+
 ## Development
 
 ```bash
@@ -310,17 +378,25 @@ uv run z-image -p "test" --ratio 1:1
 ```
 z-image-turbo/
 ├── src/
-│   └── z_image/
-│       ├── __init__.py      # Package initialization, version info
-│       ├── __main__.py      # Entry point for `python -m z_image`
-│       ├── cli.py           # CLI argument parsing, aspect ratio presets
-│       ├── generator.py     # Image generation logic, device selection
-│       └── downloader.py    # Model download utilities
+│   ├── z_image/
+│   │   ├── __init__.py      # Package initialization, version info
+│   │   ├── __main__.py      # Entry point for `python -m z_image`
+│   │   ├── cli.py           # CLI argument parsing, aspect ratio presets
+│   │   ├── generator.py     # Image generation logic, device selection
+│   │   └── downloader.py    # Model download utilities
+│   └── generate_prompts/
+│       ├── __init__.py      # Package initialization
+│       ├── __main__.py      # Entry point for `python -m generate_prompts`
+│       ├── cli.py           # CLI with interactive/batch modes, variation generation
+│       └── generator.py     # PydanticAI/Ollama LLM integration, prompt sanitization
 ├── tests/
 │   ├── __init__.py
-│   └── test_cli.py          # CLI unit tests
+│   ├── test_cli.py              # CLI unit tests
+│   └── test_generate_prompts.py # Prompt generation tests
+├── input/                   # Input templates (git-ignored)
 ├── models/                  # Model cache directory (git-ignored)
 ├── output/                  # Generated images output (git-ignored)
+├── ai_docs/                 # AI documentation (pydantic_ai, diffusers, etc.)
 ├── pyproject.toml           # Project configuration and dependencies
 ├── uv.lock                  # Dependency lock file
 └── README.md
@@ -330,9 +406,11 @@ z-image-turbo/
 
 | Module | Description |
 |--------|-------------|
-| `cli.py` | Handles command-line argument parsing, defines aspect ratio presets and resolution validation |
-| `generator.py` | Core image generation using Diffusers pipeline, manages device selection (MPS/CPU) and resolution limits |
-| `downloader.py` | Downloads and caches Z-Image-Turbo model from Hugging Face |
+| `z_image/cli.py` | Handles command-line argument parsing, defines aspect ratio presets and resolution validation |
+| `z_image/generator.py` | Core image generation using Diffusers pipeline, manages device selection (MPS/CPU) and resolution limits |
+| `z_image/downloader.py` | Downloads and caches Z-Image-Turbo model from Hugging Face |
+| `generate_prompts/cli.py` | Interactive/batch CLI with template variation generation (`-n` for batch mode) |
+| `generate_prompts/generator.py` | PydanticAI + Ollama LLM integration, random attribute selection (`\|` syntax), prompt sanitization utilities |
 
 ## License
 
