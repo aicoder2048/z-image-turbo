@@ -5,7 +5,6 @@ description = "Z-Image-Turbo 图像生成器"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "torch>=2.1",
     "diffusers",
     "transformers",
     "accelerate",
@@ -17,9 +16,19 @@ dependencies = [
     "pydantic-ai>=1.25.1",
 ]
 
+[project.optional-dependencies]
+# Default: CPU/MPS (smaller download)
+cpu = ["torch>=2.1"]
+# CUDA for Windows/Linux with NVIDIA GPU
+cuda = ["torch>=2.1"]
+
 [project.scripts]
 z-image = "z_image.__main__:main"
 generate_prompts = "generate_prompts.cli:main"
+
+[tool.uv]
+# Torch is managed separately to support both CPU and CUDA versions
+# Install with: uv sync --extra cpu  OR  uv pip install torch --index-url https://download.pytorch.org/whl/cu121
 
 [tool.uv.sources]
 diffusers = { git = "https://github.com/huggingface/diffusers" }

@@ -25,31 +25,43 @@ A command-line tool for text-to-image generation using Alibaba's [Z-Image-Turbo]
 git clone https://github.com/aicoder2048/z-image-turbo.git
 cd z-image-turbo
 
-# Install dependencies
+# Install dependencies (without PyTorch)
 uv sync
-
-# Download model (optional, will auto-download on first run)
-uv run z-image --download-only
 ```
 
-### Windows CUDA Setup (Optional)
+### Install PyTorch (Choose One)
 
-For NVIDIA GPU acceleration on Windows, install PyTorch with CUDA support:
+**Mac (MPS):**
+```bash
+uv pip install torch
+```
+
+**Windows/Linux (CUDA - NVIDIA GPU):**
+```bash
+uv pip install torch --index-url https://download.pytorch.org/whl/cu121
+```
+
+**CPU Only:**
+```bash
+uv pip install torch --index-url https://download.pytorch.org/whl/cpu
+```
+
+### Verify Installation
 
 ```bash
-# Install CUDA-enabled PyTorch (CUDA 12.1)
-pip install torch --index-url https://download.pytorch.org/whl/cu121
+# Download model
+uv run --no-sync z-image --download-only
 
-# Or for CUDA 11.8
-pip install torch --index-url https://download.pytorch.org/whl/cu118
+# Check GPU detection
+uv run --no-sync python -c "import torch; print(f'CUDA: {torch.cuda.is_available()}')"
 ```
 
-> **Note**: The default PyTorch installation is CPU-only. CUDA support requires separate installation.
+> **Note**: Use `uv run --no-sync` to prevent uv from reinstalling PyTorch.
 
 ## Quick Start
 
 ```bash
-# Basic usage
+# Basic usage (use --no-sync on Windows with CUDA)
 uv run z-image -p "a cat floating in space"
 
 # Chinese prompt (supports bilingual)
@@ -64,6 +76,8 @@ uv run z-image -p "portrait photo" --resolution 768x1344 --seed 42
 # Generate multiple images
 uv run z-image -p "sunset over ocean" -n 3
 ```
+
+> **Windows CUDA Users**: Use `uv run --no-sync z-image ...` to prevent PyTorch from being reinstalled.
 
 ## Usage
 
