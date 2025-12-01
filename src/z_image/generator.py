@@ -35,7 +35,7 @@ def align_resolution(width: int, height: int) -> tuple[int, int]:
     return aligned_width, aligned_height
 
 
-def resolve_device(device: str, width: int, height: int) -> str:
+def resolve_device(device: str, width: int, height: int, force_mps: bool = False) -> str:
     """
     解析设备选择。
 
@@ -43,12 +43,13 @@ def resolve_device(device: str, width: int, height: int) -> str:
         device: 用户指定的设备 ("auto", "mps", "cpu")
         width: 图像宽度
         height: 图像高度
+        force_mps: 强制使用 MPS，忽略分辨率限制（实验性，可能导致崩溃）
 
     Returns:
         实际使用的设备 ("mps" 或 "cpu")
 
     Raises:
-        ValueError: 当 device="mps" 但分辨率超过 MPS 限制时
+        ValueError: 当 device="mps" 但分辨率超过 MPS 限制时（除非 force_mps=True）
     """
     if platform.system() != "Darwin":
         return "cpu"
@@ -60,15 +61,18 @@ def resolve_device(device: str, width: int, height: int) -> str:
         return "cpu"
 
     if device == "mps":
-        if exceeds_mps_limit:
+        if exceeds_mps_limit and not force_mps:
             raise ValueError(
                 f"分辨率 {width}x{height} ({total_pixels:,} 像素) 超过 Mac MPS 限制。\n"
                 f"这是 PyTorch MPS 后端的已知 bug (NDArray > 2^32 bytes)。\n"
-                f"请使用 --device cpu 启用 CPU 模式，或降低分辨率。"
+                f"请使用 --device cpu 启用 CPU 模式，或降低分辨率。\n"
+                f"或使用 --force-mps 强制尝试（可能崩溃）。"
             )
         return "mps"
 
     # device == "auto"
+    if force_mps:
+        return "mps"
     if exceeds_mps_limit:
         return "cpu"
     return "mps"

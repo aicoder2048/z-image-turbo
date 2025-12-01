@@ -55,7 +55,7 @@ uv run z-image -p "sunset over ocean" -n 3
 
 ```
 z-image [-h] [--prompt TEXT] [--ratio RATIO] [--resolution WxH]
-        [--device {auto,mps,cpu}] [--seed INT] [--count N]
+        [--device {auto,mps,cpu}] [--force-mps] [--seed INT] [--count N]
         [--download-only] [--model-dir DIR] [--output-dir DIR]
 ```
 
@@ -67,6 +67,7 @@ z-image [-h] [--prompt TEXT] [--ratio RATIO] [--resolution WxH]
 | `--ratio` | `-r` | Aspect ratio: 1:1, 16:9, 9:16, 4:3, 3:4, 3:2, 2:3 |
 | `--resolution` | | Custom resolution, e.g., 1024x768 (overrides --ratio) |
 | `--device` | `-d` | Device: auto, mps, cpu (default: auto) |
+| `--force-mps` | | [Experimental] Force MPS even if resolution exceeds limit (may crash) |
 | `--seed` | `-s` | Random seed for reproducibility |
 | `--count` | `-n` | Number of images to generate (default: 1) |
 | `--download-only` | | Download model without generating |
@@ -190,6 +191,56 @@ uv run z-image -p "test" --ratio 16:9 --device mps
 | CPU (M2 Max) | ~5-10 min | Slow, any resolution |
 | CUDA (RTX 3090) | ~10 sec | Fast, any resolution |
 
+### Power User Workarounds
+
+For advanced users who want to experiment with MPS at higher resolutions:
+
+#### 1. Force MPS Mode (Experimental)
+
+Use `--force-mps` to bypass the resolution safety check:
+
+```bash
+# WARNING: May crash or produce corrupted images
+uv run z-image -p "test" --resolution 1920x1080 --force-mps
+```
+
+This flag:
+- Forces MPS usage even when resolution exceeds the safe limit
+- May cause program crashes, system instability, or corrupted output
+- Useful for testing if your specific Mac/configuration can handle higher resolutions
+
+#### 2. PyTorch MPS Fallback Environment Variable
+
+Enable partial CPU fallback for unsupported MPS operations:
+
+```bash
+# Set before running
+export PYTORCH_ENABLE_MPS_FALLBACK=1
+uv run z-image -p "test" --resolution 1920x1080 --force-mps
+```
+
+This environment variable tells PyTorch to fall back to CPU for operations that fail on MPS, potentially allowing higher resolutions to work (with reduced performance).
+
+#### 3. Experimental Examples
+
+```bash
+# Try 1080p with force-mps (risky)
+uv run z-image -p "landscape" --resolution 1920x1080 --force-mps
+
+# Try with MPS fallback enabled
+PYTORCH_ENABLE_MPS_FALLBACK=1 uv run z-image -p "test" --resolution 2560x1440 --force-mps
+
+# Safe: use CPU for guaranteed high-res support
+uv run z-image -p "4k wallpaper" --resolution 3840x2160 --device cpu
+```
+
+#### Warnings
+
+- **Data Loss Risk**: Crashes may occur without warning
+- **System Instability**: High memory pressure can affect other applications
+- **No Support**: Issues encountered with `--force-mps` are expected behavior
+- **Recommendation**: For production use, stick with auto mode or explicit CPU for high resolutions
+
 ### References
 
 - [PyTorch MPS NDArray Issue #84039](https://github.com/pytorch/pytorch/issues/84039)
@@ -204,13 +255,14 @@ Generated images are saved to:
 output/
   YYMMDD/
     HHMMSS_<seed>_nbp.png
-    HHMMSS_<seed>_nbp.png
     ...
 ```
 
 Example: `output/251201/143052_1234567890_nbp.png`
 
 ## Model Information
+
+### Z-Image-Turbo
 
 - **Model**: [Tongyi-MAI/Z-Image-Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo)
 - **Size**: ~6B parameters
@@ -252,6 +304,35 @@ uv run pytest tests/ -v
 # Run with verbose output
 uv run z-image -p "test" --ratio 1:1
 ```
+
+## Codebase Structure
+
+```
+z-image-turbo/
+├── src/
+│   └── z_image/
+│       ├── __init__.py      # Package initialization, version info
+│       ├── __main__.py      # Entry point for `python -m z_image`
+│       ├── cli.py           # CLI argument parsing, aspect ratio presets
+│       ├── generator.py     # Image generation logic, device selection
+│       └── downloader.py    # Model download utilities
+├── tests/
+│   ├── __init__.py
+│   └── test_cli.py          # CLI unit tests
+├── models/                  # Model cache directory (git-ignored)
+├── output/                  # Generated images output (git-ignored)
+├── pyproject.toml           # Project configuration and dependencies
+├── uv.lock                  # Dependency lock file
+└── README.md
+```
+
+### Key Modules
+
+| Module | Description |
+|--------|-------------|
+| `cli.py` | Handles command-line argument parsing, defines aspect ratio presets and resolution validation |
+| `generator.py` | Core image generation using Diffusers pipeline, manages device selection (MPS/CPU) and resolution limits |
+| `downloader.py` | Downloads and caches Z-Image-Turbo model from Hugging Face |
 
 ## License
 

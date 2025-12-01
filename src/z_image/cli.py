@@ -152,6 +152,11 @@ def parse_args() -> argparse.Namespace:
         default="auto",
         help="计算设备: auto=自动选择, mps=GPU加速, cpu=CPU模式(慢但支持高分辨率)",
     )
+    parser.add_argument(
+        "--force-mps",
+        action="store_true",
+        help="[实验性] 强制使用 MPS 即使分辨率超过限制（可能导致崩溃）",
+    )
 
     # 生成控制
     parser.add_argument(
