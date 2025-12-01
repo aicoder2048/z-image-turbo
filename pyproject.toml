@@ -1,0 +1,33 @@
+[project]
+name = "z-image"
+version = "0.1.0"
+description = "Z-Image-Turbo 图像生成器"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "torch>=2.1",
+    "diffusers",
+    "transformers",
+    "accelerate",
+    "safetensors",
+    "huggingface-hub>=0.20.0",
+    "tqdm",
+]
+
+[project.scripts]
+z-image = "z_image.__main__:main"
+
+[tool.uv.sources]
+diffusers = { git = "https://github.com/huggingface/diffusers" }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/z_image"]
