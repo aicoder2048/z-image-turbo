@@ -155,12 +155,28 @@ class TestSanitizePrompt:
         result = sanitize_prompt(prompt)
         assert "<|endoftext|>" not in result
 
-    def test_removes_non_ascii(self):
-        """Test removal of non-ASCII characters."""
-        prompt = "A beautiful sunset — over the océan"
+    def test_removes_problematic_unicode(self):
+        """Test removal of problematic unicode characters like em dashes and curly quotes."""
+        prompt = "A beautiful sunset — over the ocean"
         result = sanitize_prompt(prompt)
-        # Should only contain ASCII
-        assert all(ord(c) < 128 for c in result)
+        # Em dash should be replaced with space
+        assert "—" not in result
+        assert "sunset" in result
+        assert "ocean" in result
+
+    def test_preserves_chinese_characters(self):
+        """Test that Chinese characters are preserved."""
+        prompt = "一只猫在太空中漂浮"
+        result = sanitize_prompt(prompt)
+        assert result == prompt
+
+    def test_preserves_mixed_language_prompt(self):
+        """Test that mixed Chinese and English prompts are preserved."""
+        prompt = "一只 cute cat 在太空中漂浮"
+        result = sanitize_prompt(prompt)
+        assert "一只" in result
+        assert "cute cat" in result
+        assert "太空中漂浮" in result
 
     def test_normalizes_whitespace(self):
         """Test whitespace normalization."""
@@ -204,6 +220,15 @@ class TestIsPromptProblematic:
         """Test very short prompts are problematic."""
         assert is_prompt_problematic("hi")
         assert is_prompt_problematic("!!!")
+
+    def test_chinese_prompt_not_problematic(self):
+        """Test that Chinese prompts are not marked as problematic."""
+        assert not is_prompt_problematic("一只猫")
+        assert not is_prompt_problematic("一只猫在太空中漂浮")
+
+    def test_mixed_language_prompt_not_problematic(self):
+        """Test that mixed Chinese and English prompts are not problematic."""
+        assert not is_prompt_problematic("一只 cute cat 在太空")
 
 
 class TestGeneratePromptId:

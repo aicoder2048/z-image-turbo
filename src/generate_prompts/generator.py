@@ -338,11 +338,6 @@ def sanitize_prompt(prompt: str) -> str:
     if len(sanitized) != original_len:
         cprint("Removed angle bracket tokens from prompt", "yellow")
 
-    original_len = len(sanitized)
-    sanitized = re.sub(r'[^\x00-\x7F]+', ' ', sanitized)
-    if len(sanitized) != original_len:
-        cprint("Removed non-ASCII characters from prompt", "yellow")
-
     sanitized = re.sub(r'\s+', ' ', sanitized).strip()
 
     if sanitized != prompt:
@@ -377,8 +372,8 @@ def is_prompt_problematic(prompt: str) -> bool:
         if re.search(pattern, prompt):
             return True
 
-    clean_prompt = re.sub(r'[^\w\s]', '', prompt).strip()
-    if len(clean_prompt) < 5:
+    clean_prompt = re.sub(r'[^\w\s]', '', prompt, flags=re.UNICODE).strip()
+    if len(clean_prompt) < 3:
         return True
 
     return False
