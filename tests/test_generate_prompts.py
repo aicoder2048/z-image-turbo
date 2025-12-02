@@ -15,8 +15,10 @@ from generate_prompts.generator import (
     is_prompt_problematic,
     generate_prompt_id,
     load_instruction_file,
+    create_llm_model,
     DEFAULT_INSTRUCTION_FILE,
 )
+from generate_prompts import generator as generator_module
 
 
 class TestGetAttributeValue:
@@ -327,3 +329,78 @@ class TestLoadInstructionFile:
         result = instruction.format(template_description="a cat in space")
         assert "a cat in space" in result
         assert "{template_description}" not in result
+
+
+class TestCreateLlmModel:
+    """Tests for create_llm_model function."""
+
+    def test_create_llm_model_ollama_default(self, monkeypatch):
+        """Test default provider is Ollama."""
+        monkeypatch.setattr(generator_module, "LLM_PROVIDER", "ollama")
+        monkeypatch.setattr(generator_module, "OLLAMA_MODEL", "test-model")
+        monkeypatch.setattr(generator_module, "OLLAMA_URL", "http://localhost:11434/v1")
+
+        model, provider_name, model_name = create_llm_model()
+        assert provider_name == "Ollama"
+        assert model_name == "test-model"
+        assert model is not None
+
+    def test_create_llm_model_openai(self, monkeypatch):
+        """Test OpenAI provider creation."""
+        monkeypatch.setattr(generator_module, "LLM_PROVIDER", "openai")
+        monkeypatch.setattr(generator_module, "OPENAI_API_KEY", "sk-test-key")
+        monkeypatch.setattr(generator_module, "OPENAI_MODEL", "gpt-4o-mini")
+        monkeypatch.setattr(generator_module, "OPENAI_BASE_URL", "https://api.openai.com/v1")
+
+        model, provider_name, model_name = create_llm_model()
+        assert provider_name == "OpenAI"
+        assert model_name == "gpt-4o-mini"
+        assert model is not None
+
+    def test_create_llm_model_grok(self, monkeypatch):
+        """Test Grok provider creation."""
+        monkeypatch.setattr(generator_module, "LLM_PROVIDER", "grok")
+        monkeypatch.setattr(generator_module, "GROK_API_KEY", "xai-test-key")
+        monkeypatch.setattr(generator_module, "GROK_MODEL", "grok-3-mini")
+        monkeypatch.setattr(generator_module, "GROK_BASE_URL", "https://api.x.ai/v1")
+
+        model, provider_name, model_name = create_llm_model()
+        assert provider_name == "Grok (xAI)"
+        assert model_name == "grok-3-mini"
+        assert model is not None
+
+    def test_create_llm_model_openai_missing_api_key(self, monkeypatch):
+        """Test error for missing OpenAI API key."""
+        monkeypatch.setattr(generator_module, "LLM_PROVIDER", "openai")
+        monkeypatch.setattr(generator_module, "OPENAI_API_KEY", "")
+
+        with pytest.raises(ValueError) as exc_info:
+            create_llm_model()
+        assert "OPENAI_API_KEY" in str(exc_info.value)
+
+    def test_create_llm_model_grok_missing_api_key(self, monkeypatch):
+        """Test error for missing Grok API key."""
+        monkeypatch.setattr(generator_module, "LLM_PROVIDER", "grok")
+        monkeypatch.setattr(generator_module, "GROK_API_KEY", "")
+
+        with pytest.raises(ValueError) as exc_info:
+            create_llm_model()
+        assert "GROK_API_KEY" in str(exc_info.value)
+
+    def test_create_llm_model_invalid_provider(self, monkeypatch):
+        """Test error for unknown provider."""
+        monkeypatch.setattr(generator_module, "LLM_PROVIDER", "invalid_provider")
+
+        with pytest.raises(ValueError) as exc_info:
+            create_llm_model()
+        assert "Invalid LLM_PROVIDER" in str(exc_info.value)
+        assert "invalid_provider" in str(exc_info.value)
+
+    def test_create_llm_model_whitespace_api_key(self, monkeypatch):
+        """Test error for whitespace-only API key."""
+        monkeypatch.setattr(generator_module, "LLM_PROVIDER", "openai")
+        monkeypatch.setattr(generator_module, "OPENAI_API_KEY", "   ")
+
+        with pytest.raises(ValueError) as exc_info:
+            create_llm_model()
+        assert "OPENAI_API_KEY" in str(exc_info.value)

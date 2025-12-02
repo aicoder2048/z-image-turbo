@@ -462,15 +462,31 @@ uv run z-image --download-only
 
 ## Generate Prompts
 
-This project includes a prompt generation tool that uses LLM (via Ollama) to create detailed image generation prompts from templates.
+This project includes a prompt generation tool that uses LLM to create detailed image generation prompts from templates. Supports multiple LLM providers: **Ollama** (default), **OpenAI**, and **Grok (xAI)**.
 
 ### Setup
 
-1. Copy `.env.example` to `.env` and configure your Ollama settings:
+1. Copy `.env.example` to `.env` and configure your LLM provider:
+
+   **Option 1: Ollama (default, local)**
    ```bash
-   # .env
+   LLM_PROVIDER=ollama
    OLLAMA_URL=http://localhost:11434/v1
-   OLLAMA_MODEL=dolphin3:latest
+   OLLAMA_MODEL=gemma3:27b
+   ```
+
+   **Option 2: OpenAI**
+   ```bash
+   LLM_PROVIDER=openai
+   OPENAI_API_KEY=sk-your-api-key
+   OPENAI_MODEL=gpt-4o-mini
+   ```
+
+   **Option 3: Grok (xAI)**
+   ```bash
+   LLM_PROVIDER=grok
+   GROK_API_KEY=xai-your-api-key
+   GROK_MODEL=grok-3-mini
    ```
 
 2. Create a template file at `input/prompt_template.json` (a sample is provided)
