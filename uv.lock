@@ -3266,6 +3266,7 @@ source = { editable = "." }
 dependencies = [
     { name = "accelerate" },
     { name = "diffusers" },
+    { name = "hf-xet" },
     { name = "huggingface-hub" },
     { name = "pydantic-ai" },
     { name = "python-dotenv" },
@@ -3292,6 +3293,7 @@ dev = [
 requires-dist = [
     { name = "accelerate" },
     { name = "diffusers", git = "https://github.com/huggingface/diffusers" },
+    { name = "hf-xet", specifier = ">=1.2.0" },
     { name = "huggingface-hub", specifier = ">=0.20.0" },
     { name = "pydantic-ai", specifier = ">=1.25.1" },
     { name = "python-dotenv", specifier = ">=1.2.1" },

@@ -27,7 +27,7 @@ def download_model(
     local_path = snapshot_download(
         repo_id=model_id,
         cache_dir=str(cache_dir),
-        resume_download=True,  # 断点续传
+        # resume_download 已弃用，huggingface_hub 1.0+ 默认自动续传
         # tqdm 进度条默认启用
     )
     return Path(local_path)
