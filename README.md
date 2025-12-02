@@ -41,7 +41,7 @@ uv pip install torch
 
 **Windows/Linux (CUDA - NVIDIA GPU):**
 ```bash
-uv pip install torch --index-url https://download.pytorch.org/whl/cu121
+uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 ```
 
 **CPU Only:**
@@ -52,14 +52,22 @@ uv pip install torch --index-url https://download.pytorch.org/whl/cpu
 ### Verify Installation
 
 ```bash
-# Download model
-uv run --no-sync z-image --download-only
-
-# Check GPU detection
-uv run --no-sync python -c "import torch; print(f'CUDA: {torch.cuda.is_available()}')"
+uv run --no-sync python -c "
+import torch
+print(f'PyTorch version: {torch.__version__}')
+print(f'CUDA available: {torch.cuda.is_available()}')
+print(f'CUDA built: {torch.version.cuda}')
+print(f'cuDNN version: {torch.backends.cudnn.version() if torch.cuda.is_available() else \"N/A\"}')
+"
 ```
 
 > **Note**: Use `uv run --no-sync` to prevent uv from reinstalling PyTorch.
+
+### Download Model
+
+```bash
+uv run --no-sync z-image --download-only
+```
 
 ## Quick Start
 
