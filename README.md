@@ -52,13 +52,7 @@ uv pip install torch --index-url https://download.pytorch.org/whl/cpu
 ### Verify Installation
 
 ```bash
-uv run --no-sync python -c "
-import torch
-print(f'PyTorch version: {torch.__version__}')
-print(f'CUDA available: {torch.cuda.is_available()}')
-print(f'CUDA built: {torch.version.cuda}')
-print(f'cuDNN version: {torch.backends.cudnn.version() if torch.cuda.is_available() else \"N/A\"}')
-"
+uv run --no-sync python -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA: {torch.cuda.is_available()}'); print(f'CUDA version: {torch.version.cuda}')"
 ```
 
 > **Note**: Use `uv run --no-sync` to prevent uv from reinstalling PyTorch.
