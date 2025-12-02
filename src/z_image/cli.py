@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import shlex
 from pathlib import Path
 
 # 预设宽高比
@@ -145,6 +146,7 @@ def parse_args() -> argparse.Namespace:
   %(prog)s -p "人像照片" --resolution 768x1344 --seed 42
   %(prog)s -f input/prompts/prompts.json          # 从 JSON 文件批量生成
   %(prog)s -f prompts.txt -n 2                    # 每个 prompt 生成 2 张
+  %(prog)s -i                                     # 启动交互模式
 
 常用分辨率参考:
   分辨率        比例      使用场景
@@ -250,6 +252,14 @@ def parse_args() -> argparse.Namespace:
         help="生成图像数量（默认: 1）",
     )
 
+    # 交互模式
+    parser.add_argument(
+        "--interactive",
+        "-i",
+        action="store_true",
+        help="启用交互模式：模型加载后等待用户输入，支持多次生成而无需重新加载模型",
+    )
+
     # 模型管理
     parser.add_argument(
         "--download-only",
@@ -274,10 +284,188 @@ def parse_args() -> argparse.Namespace:
     args = parser.parse_args()
 
     # 验证 prompt 输入
-    if not args.download_only:
+    if not args.download_only and not args.interactive:
         if args.prompt and args.prompts_file:
             parser.error("--prompt/-p 和 --prompts-file/-f 不能同时使用")
         if not args.prompt and not args.prompts_file:
-            parser.error("必须指定 --prompt/-p 或 --prompts-file/-f（除非使用 --download-only）")
+            parser.error("必须指定 --prompt/-p 或 --prompts-file/-f（除非使用 --download-only 或 --interactive）")
 
     return args
+
+
+# 交互模式特殊命令
+INTERACTIVE_COMMANDS = {"help", "quit", "exit", "status"}
+
+
+def parse_interactive_input(input_line: str) -> dict:
+    """
+    解析交互模式下的用户输入。
+
+    支持的格式:
+    - "prompt text" - 直接输入 prompt（引号可选）
+    - -p "prompt" -r 16:9 -n 2 - 带选项的完整命令
+    - help / quit / exit / status - 特殊命令
+
+    Args:
+        input_line: 用户输入的命令行
+
+    Returns:
+        dict: 解析结果，包含以下字段:
+            - command: "generate" | "help" | "quit" | "status" | "error"
+            - prompt: str | None (当 command 为 "generate" 时)
+            - prompts_file: str | None (当使用 -f 时)
+            - ratio: str | None
+            - resolution: str | None
+            - count: int
+            - seed: int | None
+            - error: str | None (当 command 为 "error" 时)
+    """
+    input_line = input_line.strip()
+
+    if not input_line:
+        return {"command": "empty"}
+
+    # 检查特殊命令
+    lower_input = input_line.lower()
+    if lower_input in ("quit", "exit"):
+        return {"command": "quit"}
+    if lower_input == "help":
+        return {"command": "help"}
+    if lower_input == "status":
+        return {"command": "status"}
+
+    # 默认值
+    result = {
+        "command": "generate",
+        "prompt": None,
+        "prompts_file": None,
+        "ratio": "1:1",
+        "resolution": None,
+        "count": 1,
+        "seed": None,
+        "force_mps": False,
+    }
+
+    # 尝试解析为带选项的命令
+    try:
+        tokens = shlex.split(input_line)
+    except ValueError as e:
+        return {"command": "error", "error": f"解析错误: {e}"}
+
+    if not tokens:
+        return {"command": "empty"}
+
+    # 如果第一个 token 不是选项，则将整个输入作为 prompt
+    if not tokens[0].startswith("-"):
+        # 整个输入作为 prompt（移除外层引号如果有的话）
+        result["prompt"] = input_line.strip("\"'")
+        return result
+
+    # 解析带选项的命令
+    i = 0
+    while i < len(tokens):
+        token = tokens[i]
+
+        if token in ("-p", "--prompt"):
+            if i + 1 < len(tokens):
+                result["prompt"] = tokens[i + 1]
+                i += 2
+            else:
+                return {"command": "error", "error": "-p/--prompt 需要参数"}
+
+        elif token in ("-r", "--ratio"):
+            if i + 1 < len(tokens):
+                ratio = tokens[i + 1]
+                if ratio in ASPECT_RATIOS:
+                    result["ratio"] = ratio
+                    i += 2
+                else:
+                    return {"command": "error", "error": f"无效的宽高比: {ratio}，可选: {', '.join(ASPECT_RATIOS.keys())}"}
+            else:
+                return {"command": "error", "error": "-r/--ratio 需要参数"}
+
+        elif token == "--resolution":
+            if i + 1 < len(tokens):
+                result["resolution"] = tokens[i + 1]
+                i += 2
+            else:
+                return {"command": "error", "error": "--resolution 需要参数"}
+
+        elif token in ("-n", "--count"):
+            if i + 1 < len(tokens):
+                try:
+                    result["count"] = int(tokens[i + 1])
+                    i += 2
+                except ValueError:
+                    return {"command": "error", "error": f"-n/--count 需要整数参数"}
+            else:
+                return {"command": "error", "error": "-n/--count 需要参数"}
+
+        elif token in ("-s", "--seed"):
+            if i + 1 < len(tokens):
+                try:
+                    result["seed"] = int(tokens[i + 1])
+                    i += 2
+                except ValueError:
+                    return {"command": "error", "error": "-s/--seed 需要整数参数"}
+            else:
+                return {"command": "error", "error": "-s/--seed 需要参数"}
+
+        elif token in ("-f", "--prompts-file"):
+            if i + 1 < len(tokens):
+                result["prompts_file"] = tokens[i + 1]
+                i += 2
+            else:
+                return {"command": "error", "error": "-f/--prompts-file 需要参数"}
+
+        elif token == "--force-mps":
+            result["force_mps"] = True
+            i += 1
+
+        else:
+            # 未知选项，可能是 prompt 的一部分
+            return {"command": "error", "error": f"未知选项: {token}"}
+
+    # 验证必须有 prompt 或 prompts_file
+    if result["prompt"] is None and result["prompts_file"] is None:
+        return {"command": "error", "error": "缺少 prompt，请使用 -p \"prompt\"、-f 文件 或直接输入文本"}
+
+    # 验证 -p 和 -f 不能同时使用
+    if result["prompt"] is not None and result["prompts_file"] is not None:
+        return {"command": "error", "error": "-p 和 -f 不能同时使用"}
+
+    return result
+
+
+def get_interactive_help() -> str:
+    """返回交互模式的帮助信息"""
+    return """
+交互模式帮助
+============
+
+命令格式:
+  "prompt text"              直接输入 prompt 生成图像
+  -p "prompt" [选项]         带选项的生成命令
+  -f 文件 [选项]             从文件批量生成
+
+可用选项:
+  -p, --prompt TEXT          图像生成提示词（支持中英文）
+  -f, --prompts-file FILE    从文件读取 prompts（JSON 或 TXT）
+  -r, --ratio RATIO          宽高比: 1:1, 16:9, 9:16, 4:3, 3:4, 3:2, 2:3
+  --resolution WxH           自定义分辨率，如 1024x768
+  -n, --count N              每个 prompt 生成数量（默认: 1）
+  -s, --seed INT             随机种子
+  --force-mps                强制使用 MPS（即使分辨率超限，可能崩溃）
+
+特殊命令:
+  help                       显示此帮助信息
+  status                     显示当前设置
+  quit / exit                退出程序
+
+示例:
+  一只猫在太空中漂浮
+  -p "山水风景" -r 16:9
+  -p "人像照片" -n 3 -s 42
+  -f prompts.json -r 16:9
+  -f prompts.txt -n 2
+"""

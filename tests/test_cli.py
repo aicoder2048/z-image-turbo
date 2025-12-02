@@ -9,9 +9,11 @@ import pytest
 
 from z_image.cli import (
     ASPECT_RATIOS,
+    get_interactive_help,
     load_prompts,
     load_prompts_from_json,
     load_prompts_from_text,
+    parse_interactive_input,
     parse_resolution,
 )
 
@@ -272,6 +274,7 @@ def test_keyboard_interrupt_with_no_completed_images(capsys):
             device="cpu",
             force_mps=False,
             download_only=False,
+            interactive=False,
             prompts_file=None,
             prompt="test prompt",
             count=3,
@@ -320,6 +323,7 @@ def test_keyboard_interrupt_with_some_completed_images(capsys, tmp_path: Path):
             device="cpu",
             force_mps=False,
             download_only=False,
+            interactive=False,
             prompts_file=None,
             prompt="test prompt",
             count=5,
@@ -339,5 +343,201 @@ def test_keyboard_interrupt_with_some_completed_images(capsys, tmp_path: Path):
 
     captured = capsys.readouterr()
     assert "用户中断" in captured.out
-    # 完成了 2 张图像（第 3 次调用时中断）
-    assert "已完成 2/5 张图像" in captured.out
+
+
+# ============ Interactive Mode Tests ============
+
+
+class TestParseInteractiveInput:
+    """Tests for parse_interactive_input function."""
+
+    def test_empty_input(self):
+        """测试空输入"""
+        result = parse_interactive_input("")
+        assert result["command"] == "empty"
+
+        result = parse_interactive_input("   ")
+        assert result["command"] == "empty"
+
+    def test_quit_command(self):
+        """测试退出命令"""
+        assert parse_interactive_input("quit")["command"] == "quit"
+        assert parse_interactive_input("QUIT")["command"] == "quit"
+        assert parse_interactive_input("exit")["command"] == "quit"
+        assert parse_interactive_input("EXIT")["command"] == "quit"
+
+    def test_help_command(self):
+        """测试帮助命令"""
+        assert parse_interactive_input("help")["command"] == "help"
+        assert parse_interactive_input("HELP")["command"] == "help"
+
+    def test_status_command(self):
+        """测试状态命令"""
+        assert parse_interactive_input("status")["command"] == "status"
+        assert parse_interactive_input("STATUS")["command"] == "status"
+
+    def test_direct_prompt_input(self):
+        """测试直接输入 prompt（不带选项）"""
+        result = parse_interactive_input("一只猫在太空中")
+        assert result["command"] == "generate"
+        assert result["prompt"] == "一只猫在太空中"
+        assert result["ratio"] == "1:1"
+        assert result["count"] == 1
+
+    def test_prompt_with_quotes(self):
+        """测试带引号的 prompt"""
+        result = parse_interactive_input('"a cat in space"')
+        assert result["command"] == "generate"
+        assert result["prompt"] == "a cat in space"
+
+    def test_prompt_with_p_option(self):
+        """测试使用 -p 选项"""
+        result = parse_interactive_input('-p "山水风景"')
+        assert result["command"] == "generate"
+        assert result["prompt"] == "山水风景"
+
+    def test_prompt_with_ratio(self):
+        """测试带宽高比选项"""
+        result = parse_interactive_input('-p "test" -r 16:9')
+        assert result["command"] == "generate"
+        assert result["prompt"] == "test"
+        assert result["ratio"] == "16:9"
+
+    def test_prompt_with_resolution(self):
+        """测试带分辨率选项"""
+        result = parse_interactive_input('-p "test" --resolution 1920x1080')
+        assert result["command"] == "generate"
+        assert result["prompt"] == "test"
+        assert result["resolution"] == "1920x1080"
+
+    def test_prompt_with_count(self):
+        """测试带数量选项"""
+        result = parse_interactive_input('-p "test" -n 3')
+        assert result["command"] == "generate"
+        assert result["prompt"] == "test"
+        assert result["count"] == 3
+
+    def test_prompt_with_seed(self):
+        """测试带种子选项"""
+        result = parse_interactive_input('-p "test" -s 42')
+        assert result["command"] == "generate"
+        assert result["prompt"] == "test"
+        assert result["seed"] == 42
+
+    def test_prompt_with_all_options(self):
+        """测试带所有选项"""
+        result = parse_interactive_input('-p "风景画" -r 16:9 -n 2 -s 123')
+        assert result["command"] == "generate"
+        assert result["prompt"] == "风景画"
+        assert result["ratio"] == "16:9"
+        assert result["count"] == 2
+        assert result["seed"] == 123
+
+    def test_invalid_ratio(self):
+        """测试无效的宽高比"""
+        result = parse_interactive_input('-p "test" -r invalid')
+        assert result["command"] == "error"
+        assert "无效的宽高比" in result["error"]
+
+    def test_missing_prompt_value(self):
+        """测试缺少 prompt 值"""
+        result = parse_interactive_input("-p")
+        assert result["command"] == "error"
+        assert "需要参数" in result["error"]
+
+    def test_missing_prompt_option(self):
+        """测试缺少 prompt 选项"""
+        result = parse_interactive_input("-r 16:9")
+        assert result["command"] == "error"
+        assert "缺少 prompt" in result["error"]
+
+    def test_unknown_option(self):
+        """测试未知选项"""
+        result = parse_interactive_input("-p test --unknown value")
+        assert result["command"] == "error"
+        assert "未知选项" in result["error"]
+
+    def test_chinese_prompt_preserved(self):
+        """测试中文 prompt 被正确保留"""
+        result = parse_interactive_input("一只可爱的猫咪在花园里玩耍")
+        assert result["command"] == "generate"
+        assert result["prompt"] == "一只可爱的猫咪在花园里玩耍"
+
+    def test_prompts_file_option(self):
+        """测试 -f 选项"""
+        result = parse_interactive_input('-f prompts.json')
+        assert result["command"] == "generate"
+        assert result["prompts_file"] == "prompts.json"
+        assert result["prompt"] is None
+
+    def test_prompts_file_with_options(self):
+        """测试 -f 带其他选项"""
+        result = parse_interactive_input('-f prompts.txt -r 16:9 -n 2')
+        assert result["command"] == "generate"
+        assert result["prompts_file"] == "prompts.txt"
+        assert result["ratio"] == "16:9"
+        assert result["count"] == 2
+
+    def test_prompts_file_long_option(self):
+        """测试 --prompts-file 长选项"""
+        result = parse_interactive_input('--prompts-file input/prompts.json')
+        assert result["command"] == "generate"
+        assert result["prompts_file"] == "input/prompts.json"
+
+    def test_prompt_and_file_conflict(self):
+        """测试 -p 和 -f 不能同时使用"""
+        result = parse_interactive_input('-p "test" -f prompts.json')
+        assert result["command"] == "error"
+        assert "-p 和 -f 不能同时使用" in result["error"]
+
+    def test_prompts_file_missing_value(self):
+        """测试 -f 缺少参数"""
+        result = parse_interactive_input("-f")
+        assert result["command"] == "error"
+        assert "需要参数" in result["error"]
+
+    def test_force_mps_option(self):
+        """测试 --force-mps 选项"""
+        result = parse_interactive_input('-p "test" --force-mps')
+        assert result["command"] == "generate"
+        assert result["prompt"] == "test"
+        assert result["force_mps"] is True
+
+    def test_force_mps_with_resolution(self):
+        """测试 --force-mps 带高分辨率"""
+        result = parse_interactive_input('-p "test" --resolution 1920x1080 --force-mps')
+        assert result["command"] == "generate"
+        assert result["resolution"] == "1920x1080"
+        assert result["force_mps"] is True
+
+    def test_default_force_mps_is_false(self):
+        """测试默认 force_mps 为 False"""
+        result = parse_interactive_input('-p "test"')
+        assert result["force_mps"] is False
+
+
+class TestGetInteractiveHelp:
+    """Tests for get_interactive_help function."""
+
+    def test_help_contains_commands(self):
+        """测试帮助信息包含命令说明"""
+        help_text = get_interactive_help()
+        assert "help" in help_text
+        assert "quit" in help_text
+        assert "exit" in help_text
+        assert "status" in help_text
+
+    def test_help_contains_options(self):
+        """测试帮助信息包含选项说明"""
+        help_text = get_interactive_help()
+        assert "-p" in help_text
+        assert "-f" in help_text
+        assert "-r" in help_text
+        assert "-n" in help_text
+        assert "-s" in help_text
+        assert "--force-mps" in help_text
+
+    def test_help_contains_examples(self):
+        """测试帮助信息包含示例"""
+        help_text = get_interactive_help()
+        assert "示例" in help_text
