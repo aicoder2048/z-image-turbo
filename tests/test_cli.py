@@ -254,3 +254,90 @@ def test_load_prompts_unsupported_extension(tmp_path: Path):
 
     with pytest.raises(ValueError, match="不支持的文件格式"):
         load_prompts(csv_file)
+
+
+# ============ Keyboard Interrupt Tests ============
+
+
+def test_keyboard_interrupt_with_no_completed_images(capsys):
+    """测试在没有完成任何图像时按 Ctrl+C 的处理"""
+    from z_image.__main__ import main
+
+    with patch("z_image.__main__.parse_args") as mock_args:
+        mock_args.return_value = MagicMock(
+            model_dir="models",
+            output_dir="output",
+            ratio="1:1",
+            resolution=None,
+            device="cpu",
+            force_mps=False,
+            download_only=False,
+            prompts_file=None,
+            prompt="test prompt",
+            count=3,
+            seed=42,
+        )
+
+        with patch("z_image.__main__.resolve_device", return_value="cpu"):
+            with patch("z_image.__main__.download_model", return_value=Path("models/test")):
+                with patch("z_image.__main__.load_pipeline", return_value=(MagicMock(), "cpu")):
+                    with patch("z_image.__main__.sanitize_prompt", return_value="test prompt"):
+                        with patch("z_image.__main__.is_prompt_problematic", return_value=False):
+                            # generate_image 立即抛出 KeyboardInterrupt
+                            with patch("z_image.__main__.generate_image", side_effect=KeyboardInterrupt):
+                                with pytest.raises(SystemExit) as exc_info:
+                                    main()
+
+                                assert exc_info.value.code == 0
+
+    captured = capsys.readouterr()
+    assert "用户中断" in captured.out
+    # 没有完成任何图像，不应显示进度
+    assert "已完成" not in captured.out
+
+
+def test_keyboard_interrupt_with_some_completed_images(capsys, tmp_path: Path):
+    """测试在完成部分图像后按 Ctrl+C 的处理"""
+    from z_image.__main__ import main
+
+    call_count = 0
+
+    def mock_generate_image(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count >= 3:
+            raise KeyboardInterrupt
+        # 返回模拟的图像结果
+        mock_image = MagicMock()
+        return mock_image, 12345, tmp_path / f"test_{call_count}.png"
+
+    with patch("z_image.__main__.parse_args") as mock_args:
+        mock_args.return_value = MagicMock(
+            model_dir="models",
+            output_dir=str(tmp_path),
+            ratio="1:1",
+            resolution=None,
+            device="cpu",
+            force_mps=False,
+            download_only=False,
+            prompts_file=None,
+            prompt="test prompt",
+            count=5,
+            seed=42,
+        )
+
+        with patch("z_image.__main__.resolve_device", return_value="cpu"):
+            with patch("z_image.__main__.download_model", return_value=Path("models/test")):
+                with patch("z_image.__main__.load_pipeline", return_value=(MagicMock(), "cpu")):
+                    with patch("z_image.__main__.sanitize_prompt", return_value="test prompt"):
+                        with patch("z_image.__main__.is_prompt_problematic", return_value=False):
+                            with patch("z_image.__main__.generate_image", side_effect=mock_generate_image):
+                                with pytest.raises(SystemExit) as exc_info:
+                                    main()
+
+                                assert exc_info.value.code == 0
+
+    captured = capsys.readouterr()
+    assert "用户中断" in captured.out
+    # 完成了 2 张图像（第 3 次调用时中断）
+    assert "已完成 2/5 张图像" in captured.out

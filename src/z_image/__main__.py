@@ -1,5 +1,6 @@
 """Z-Image-Turbo 命令行入口"""
 
+import sys
 from pathlib import Path
 
 from generate_prompts.generator import is_prompt_problematic, sanitize_prompt
@@ -90,47 +91,56 @@ def main():
 
     # 5. 生成图像
     total_images = len(prompts) * args.count
-    image_num = 0
+    completed_images = 0
 
-    for prompt_idx, original_prompt in enumerate(prompts):
-        # Sanitize prompt 以移除可能导致生成问题的特殊字符
-        prompt = sanitize_prompt(original_prompt)
+    try:
+        for prompt_idx, original_prompt in enumerate(prompts):
+            # Sanitize prompt 以移除可能导致生成问题的特殊字符
+            prompt = sanitize_prompt(original_prompt)
 
-        # 检查 sanitize 后的 prompt 是否有效
-        if not prompt or prompt.strip() == "":
-            print(f"\n[跳过] Prompt {prompt_idx + 1}: sanitize 后为空")
-            continue
+            # 检查 sanitize 后的 prompt 是否有效
+            if not prompt or prompt.strip() == "":
+                print(f"\n[跳过] Prompt {prompt_idx + 1}: sanitize 后为空")
+                continue
 
-        if is_prompt_problematic(prompt):
-            print(f"\n[警告] Prompt {prompt_idx + 1} 可能包含问题字符，尝试继续生成...")
+            if is_prompt_problematic(prompt):
+                print(f"\n[警告] Prompt {prompt_idx + 1} 可能包含问题字符，尝试继续生成...")
 
-        for i in range(args.count):
-            image_num += 1
-            seed = args.seed
-            if args.seed is not None:
-                # 每张图使用不同的种子
-                seed = args.seed + image_num - 1
+            for i in range(args.count):
+                image_num = completed_images + 1
+                seed = args.seed
+                if args.seed is not None:
+                    # 每张图使用不同的种子
+                    seed = args.seed + image_num - 1
 
-            # 显示进度
-            if len(prompts) > 1:
-                print(f"\n生成图像 [Prompt {prompt_idx + 1}/{len(prompts)}, Image {i + 1}/{args.count}] ({image_num}/{total_images})...")
-                # 显示 prompt 前 50 个字符
-                prompt_preview = prompt[:50] + "..." if len(prompt) > 50 else prompt
-                print(f"Prompt: {prompt_preview}")
-            else:
-                print(f"\n生成图像 [{i + 1}/{args.count}]...")
+                # 显示进度
+                if len(prompts) > 1:
+                    print(f"\n生成图像 [Prompt {prompt_idx + 1}/{len(prompts)}, Image {i + 1}/{args.count}] ({image_num}/{total_images})...")
+                    # 显示 prompt 前 50 个字符
+                    prompt_preview = prompt[:50] + "..." if len(prompt) > 50 else prompt
+                    print(f"Prompt: {prompt_preview}")
+                else:
+                    print(f"\n生成图像 [{i + 1}/{args.count}]...")
 
-            image, used_seed, output_path = generate_image(
-                pipe=pipe,
-                prompt=prompt,
-                width=width,
-                height=height,
-                seed=seed,
-                output_dir=output_dir,
-                device=device,
-            )
-            print(f"已保存: {output_path}")
-            print(f"种子: {used_seed}")
+                image, used_seed, output_path = generate_image(
+                    pipe=pipe,
+                    prompt=prompt,
+                    width=width,
+                    height=height,
+                    seed=seed,
+                    output_dir=output_dir,
+                    device=device,
+                )
+                completed_images += 1
+                print(f"已保存: {output_path}")
+                print(f"种子: {used_seed}")
+
+    except KeyboardInterrupt:
+        print("\n")
+        print("用户中断，正在退出...")
+        if completed_images > 0:
+            print(f"已完成 {completed_images}/{total_images} 张图像")
+        sys.exit(0)
 
 
 if __name__ == "__main__":
