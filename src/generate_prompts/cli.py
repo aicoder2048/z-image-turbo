@@ -9,6 +9,7 @@ from termcolor import cprint
 from .generator import (
     load_template,
     load_existing_prompts,
+    load_instruction_file,
     generate_prompt_id,
     create_prompt_description,
     generate_detailed_prompt,
@@ -16,6 +17,7 @@ from .generator import (
     generate_variations,
     DEFAULT_TEMPLATE_FILE,
     DEFAULT_OUTPUT_FILE,
+    DEFAULT_INSTRUCTION_FILE,
 )
 
 
@@ -26,10 +28,11 @@ def parse_args():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  uv run generate_prompt                         # Interactive mode
-  uv run generate_prompt -n 5                    # Generate 5 variations
-  uv run generate_prompt -t custom.json          # Use custom template
-  uv run generate_prompt -o output/prompts.json  # Custom output file
+  uv run generate_prompts                         # Interactive mode
+  uv run generate_prompts -n 5                    # Generate 5 variations
+  uv run generate_prompts -t custom.json          # Use custom template
+  uv run generate_prompts -o output/prompts.json  # Custom output file
+  uv run generate_prompts -i custom_instruction.txt  # Use custom instruction
         """,
     )
     parser.add_argument(
@@ -53,6 +56,11 @@ Examples:
         action="store_true",
         help="Skip confirmation prompts",
     )
+    parser.add_argument(
+        "-i", "--instruction",
+        default=None,
+        help=f"Path to custom instruction file (default: {DEFAULT_INSTRUCTION_FILE})",
+    )
     return parser.parse_args()
 
 
@@ -67,6 +75,14 @@ def main():
 
         # Load the template
         template = load_template(args.template)
+
+        # Load custom instruction if provided, otherwise use default
+        instruction_template = None
+        if args.instruction:
+            instruction_template = load_instruction_file(args.instruction)
+        else:
+            # Load default instruction file
+            instruction_template = load_instruction_file()
 
         # Load existing prompts
         existing_prompts = load_existing_prompts(args.output)
@@ -129,7 +145,7 @@ def main():
             description = create_prompt_description(current_template)
             cprint(f"Created base description: {description}", "cyan")
 
-            detailed_prompt = generate_detailed_prompt(description)
+            detailed_prompt = generate_detailed_prompt(description, instruction_template)
             cprint("Generated detailed prompt!", "green")
 
             prompt_id = generate_prompt_id()

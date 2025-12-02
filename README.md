@@ -489,6 +489,9 @@ uv run generate_prompts -t my_template.json
 
 # Custom output file
 uv run generate_prompts -o input/prompts/my_prompts.json
+
+# Use custom instruction file
+uv run generate_prompts -i my_instruction.txt
 ```
 
 ### Template Format
@@ -511,6 +514,35 @@ Templates use JSON format with support for random selection using `|`:
   "camera_angle": "medium shot | close-up",
   "lighting": "natural | dramatic"
 }
+```
+
+### Custom Instruction Files
+
+You can customize how the LLM expands template descriptions by providing your own instruction file. The instruction file is a text file containing the prompt sent to the LLM, with a `{template_description}` placeholder that will be replaced with the actual description.
+
+**Default instruction file:** `src/generate_prompts/instructions/default.txt`
+
+**Creating a custom instruction file:**
+
+```text
+Create a detailed image generation prompt based on the following description:
+
+{template_description}
+
+Expand this into a comprehensive, highly descriptive prompt for an AI image generator.
+Focus on anime/illustration style with vibrant colors and dynamic composition.
+
+Important: Just return the resulting prompt, do not include any other text.
+```
+
+**Using custom instruction:**
+
+```bash
+# Use custom instruction file
+uv run generate_prompts -i anime_style_instruction.txt -n 3
+
+# Or with full options
+uv run generate_prompts -t my_template.json -i custom_instruction.txt -o output.json -n 5
 ```
 
 ### Prompt Sanitization

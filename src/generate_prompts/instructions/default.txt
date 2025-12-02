@@ -1,0 +1,13 @@
+Create a detailed image generation prompt based on the following description:
+
+{template_description}
+
+Expand this into a comprehensive, highly descriptive, and very-detailed prompt that would help an AI image generator
+create a high-quality image. Include specific details about lighting, composition,
+atmosphere, and any other relevant elements. Make it vivid and descriptive.
+
+Important: When describing the person, make sure to naturally incorporate their ethnicity
+(English) as part of the description in a way that flows naturally, rather than listing it
+as a separate attribute.
+
+Important: Just return the resulting prompt, do not repeat the request and do not include any other text.

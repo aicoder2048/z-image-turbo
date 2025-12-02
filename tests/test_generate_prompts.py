@@ -14,6 +14,8 @@ from generate_prompts.generator import (
     sanitize_prompt,
     is_prompt_problematic,
     generate_prompt_id,
+    load_instruction_file,
+    DEFAULT_INSTRUCTION_FILE,
 )
 
 
@@ -252,3 +254,76 @@ class TestGeneratePromptId:
         time.sleep(1.1)  # Sleep just over 1 second
         id2 = generate_prompt_id()
         assert id1 != id2
+
+
+class TestLoadInstructionFile:
+    """Tests for load_instruction_file function."""
+
+    def test_load_default_instruction_file(self):
+        """Test loading the default instruction file."""
+        instruction = load_instruction_file()
+        assert "{template_description}" in instruction
+        assert "image generation prompt" in instruction.lower()
+
+    def test_load_default_instruction_file_explicit_path(self):
+        """Test loading instruction file with explicit default path."""
+        instruction = load_instruction_file(DEFAULT_INSTRUCTION_FILE)
+        assert "{template_description}" in instruction
+
+    def test_load_custom_instruction_file(self, tmp_path):
+        """Test loading a custom instruction file."""
+        custom_instruction = "Generate a prompt for: {template_description}\nMake it creative!"
+        instruction_file = tmp_path / "custom_instruction.txt"
+        instruction_file.write_text(custom_instruction, encoding="utf-8")
+
+        instruction = load_instruction_file(str(instruction_file))
+        assert instruction == custom_instruction
+
+    def test_load_instruction_file_missing_placeholder(self, tmp_path):
+        """Test that loading file without placeholder raises ValueError."""
+        invalid_instruction = "Generate a prompt without the required placeholder"
+        instruction_file = tmp_path / "invalid_instruction.txt"
+        instruction_file.write_text(invalid_instruction, encoding="utf-8")
+
+        with pytest.raises(ValueError) as exc_info:
+            load_instruction_file(str(instruction_file))
+        assert "{template_description}" in str(exc_info.value)
+
+    def test_load_instruction_file_not_found(self):
+        """Test that loading non-existent file raises FileNotFoundError."""
+        with pytest.raises(FileNotFoundError):
+            load_instruction_file("/nonexistent/path/instruction.txt")
+
+    def test_load_instruction_file_with_unicode(self, tmp_path):
+        """Test loading instruction file with unicode content."""
+        unicode_instruction = "为以下描述生成详细的提示词: {template_description}\n使用中英文混合。"
+        instruction_file = tmp_path / "unicode_instruction.txt"
+        instruction_file.write_text(unicode_instruction, encoding="utf-8")
+
+        instruction = load_instruction_file(str(instruction_file))
+        assert instruction == unicode_instruction
+        assert "中英文" in instruction
+
+    def test_load_instruction_file_multiple_placeholders(self, tmp_path):
+        """Test loading file with multiple placeholders works correctly."""
+        multi_placeholder = """
+        First: {template_description}
+        Second reference: {template_description}
+        End of instruction.
+        """
+        instruction_file = tmp_path / "multi_placeholder.txt"
+        instruction_file.write_text(multi_placeholder, encoding="utf-8")
+
+        instruction = load_instruction_file(str(instruction_file))
+        assert instruction.count("{template_description}") == 2
+
+    def test_instruction_template_substitution(self, tmp_path):
+        """Test that instruction template can be used with .format()."""
+        template_instruction = "Create prompt for: {template_description}. Style: detailed."
+        instruction_file = tmp_path / "format_test.txt"
+        instruction_file.write_text(template_instruction, encoding="utf-8")
+
+        instruction = load_instruction_file(str(instruction_file))
+        result = instruction.format(template_description="a cat in space")
+        assert "a cat in space" in result
+        assert "{template_description}" not in result
