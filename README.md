@@ -10,6 +10,9 @@ A command-line tool for text-to-image generation using Alibaba's [Z-Image-Turbo]
 - **Flexible Resolution**: Multiple preset aspect ratios and custom resolutions
 - **Auto Device Selection**: Automatically selects best available GPU
 - **Reproducible Results**: Seed support for consistent outputs
+- **Interactive Mode**: REPL-style interface for continuous generation without reloading models
+- **Batch Generation**: Generate from JSON/TXT prompt files
+- **Graceful Interruption**: Ctrl+C support with progress tracking
 
 ## Installation
 
@@ -75,6 +78,13 @@ uv run z-image -p "portrait photo" --resolution 768x1344 --seed 42
 
 # Generate multiple images
 uv run z-image -p "sunset over ocean" -n 3
+
+# Batch generation from file
+uv run z-image -f prompts.json -r 16:9
+uv run z-image -f prompts.txt -n 2
+
+# Interactive mode (avoid model reload)
+uv run z-image -i
 ```
 
 > **Windows CUDA Users**: Use `uv run --no-sync z-image ...` to prevent PyTorch from being reinstalled.
@@ -82,9 +92,9 @@ uv run z-image -p "sunset over ocean" -n 3
 ## Usage
 
 ```
-z-image [-h] [--prompt TEXT] [--ratio RATIO] [--resolution WxH]
+z-image [-h] [--prompt TEXT] [--prompts-file FILE] [--ratio RATIO] [--resolution WxH]
         [--device {auto,cuda,mps,cpu}] [--force-mps] [--seed INT] [--count N]
-        [--download-only] [--model-dir DIR] [--output-dir DIR]
+        [--interactive] [--download-only] [--model-dir DIR] [--output-dir DIR]
 ```
 
 ### Options
@@ -92,12 +102,14 @@ z-image [-h] [--prompt TEXT] [--ratio RATIO] [--resolution WxH]
 | Option | Short | Description |
 |--------|-------|-------------|
 | `--prompt` | `-p` | Image generation prompt (Chinese/English) |
+| `--prompts-file` | `-f` | Read prompts from JSON/TXT file (mutually exclusive with -p) |
 | `--ratio` | `-r` | Aspect ratio: 1:1, 16:9, 9:16, 4:3, 3:4, 3:2, 2:3 |
 | `--resolution` | | Custom resolution, e.g., 1024x768 (overrides --ratio) |
 | `--device` | `-d` | Device: auto, cuda, mps, cpu (default: auto) |
 | `--force-mps` | | [Experimental] Force MPS even if resolution exceeds limit (may crash) |
 | `--seed` | `-s` | Random seed for reproducibility |
-| `--count` | `-n` | Number of images to generate (default: 1) |
+| `--count` | `-n` | Number of images to generate per prompt (default: 1) |
+| `--interactive` | `-i` | Enable interactive mode for continuous generation |
 | `--download-only` | | Download model without generating |
 | `--model-dir` | | Model cache directory (default: models) |
 | `--output-dir` | | Output directory (default: output) |
@@ -122,6 +134,132 @@ uv run z-image -p "detailed cityscape" --resolution 1920x1080
 
 # Force CPU mode
 uv run z-image -p "test" --resolution 2560x1440 --device cpu
+```
+
+## Interactive Mode
+
+Interactive mode keeps the model loaded in memory, allowing you to generate multiple images without the 10-30 second model reload time.
+
+### Starting Interactive Mode
+
+```bash
+uv run z-image -i
+```
+
+### Interactive Commands
+
+Once in interactive mode, you'll see a `z-image>` prompt:
+
+```
+==================================================
+进入交互模式
+==================================================
+
+输入 'help' 查看帮助，'quit' 退出
+z-image>
+```
+
+### Command Examples
+
+```bash
+# Direct prompt input
+z-image> a cat in space
+
+# With options
+z-image> -p "mountain landscape" -r 16:9
+
+# Multiple images with seed
+z-image> -p "sunset" -n 3 -s 42
+
+# Batch from file
+z-image> -f prompts.json -r 16:9
+
+# High resolution with force-mps (Mac only)
+z-image> -p "4k wallpaper" --resolution 1920x1080 --force-mps
+
+# Special commands
+z-image> help      # Show help
+z-image> status    # Show current settings
+z-image> quit      # Exit interactive mode
+```
+
+### Available Options in Interactive Mode
+
+| Option | Description |
+|--------|-------------|
+| `-p "prompt"` | Image generation prompt |
+| `-f file` | Read prompts from JSON/TXT file |
+| `-r ratio` | Aspect ratio (1:1, 16:9, etc.) |
+| `--resolution WxH` | Custom resolution |
+| `-n count` | Number of images per prompt |
+| `-s seed` | Random seed |
+| `--force-mps` | Force MPS for high resolution (Mac) |
+
+### Keyboard Shortcuts
+
+- **Ctrl+C** during generation: Interrupts current generation, returns to prompt
+- **Ctrl+C** at prompt: Shows hint to use 'quit'
+- **Ctrl+D**: Exit interactive mode
+
+## Batch Generation from File
+
+Generate images from multiple prompts stored in a file.
+
+### JSON Format
+
+Create a JSON file with an array of objects containing `description` field:
+
+```json
+[
+  {"description": "a cat floating in space"},
+  {"description": "mountain landscape at sunset"},
+  {"description": "futuristic cityscape"}
+]
+```
+
+### TXT Format
+
+Create a text file with one prompt per line:
+
+```
+a cat floating in space
+mountain landscape at sunset
+futuristic cityscape
+```
+
+### Batch Generation Examples
+
+```bash
+# Generate from JSON file
+uv run z-image -f prompts.json
+
+# With aspect ratio
+uv run z-image -f prompts.json -r 16:9
+
+# Multiple images per prompt
+uv run z-image -f prompts.txt -n 2
+
+# With seed (increments for each image)
+uv run z-image -f prompts.json -s 42
+
+# In interactive mode
+z-image> -f prompts.json -r 16:9 -n 2
+```
+
+### Progress Display
+
+When generating from file, progress is shown as:
+
+```
+已加载 3 个 prompts
+
+生成图像 [Prompt 1/3, Image 1/2] (1/6)...
+Prompt: a cat floating in space
+已保存: output/251202/143052_12345_nbp.png
+种子: 12345
+
+生成图像 [Prompt 1/3, Image 2/2] (2/6)...
+...
 ```
 
 ## Resolution Guide
