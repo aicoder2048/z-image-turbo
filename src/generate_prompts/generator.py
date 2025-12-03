@@ -19,9 +19,9 @@ from pydantic_ai.providers.openai import OpenAIProvider
 load_dotenv()
 
 # Constants
-DEFAULT_TEMPLATE_FILE = "input/prompt_template.json"
+DEFAULT_TEMPLATE_FILE = "src/generate_prompts/templates/default_template.json"
 DEFAULT_OUTPUT_FILE = "input/prompts/prompts.json"
-DEFAULT_INSTRUCTION_FILE = "src/generate_prompts/instructions/default.txt"
+DEFAULT_INSTRUCTION_FILE = "src/generate_prompts/instructions/default_instruction.txt"
 MAX_RETRIES = 3
 
 # LLM Provider Configuration

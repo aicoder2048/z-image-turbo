@@ -1,0 +1,18 @@
+{
+  "subject": {
+    "type": "innocent looking girl | Gorgeous girl | Beautiful girl | Cute girl | Athletic girl",
+    "age": "14 years old | 15 years old | 16 years old | 17 years old | 18 years old | 19 years old",
+    "ethnicity": "English | Russian | Ukrainian | Polish | Spanish | French | German | Italian | Portuguese | Dutch | Swedish | Norwegian | Danish | Finnish | Greek",
+    "expression": "smile | cheerful smile | sexy smile | innocent smile | mischievous smile | seductive smile | seductive smile  and hands on hips | seductive smile and hands on hips and legs apart"
+  },
+  "clothing": {
+    "top": "t-shirt | crop top | tight crop top | tank top | camisole | lace camisole | bralette top | tube top | off-shoulder top | off-shoulder blouse | halter top | deep v-neck top | plunging neckline top | satin top | silk blouse | sheer blouse | lace blouse | corset top | bustier top | button-up shirt | tied-front shirt | knit top | tight sweater | cardigan (open front) | leather jacket | denim jacket | bomber jacket | fitted sports top | yoga top",
+    "bottom": "shorts | bikini | skirt | dress | denim shorts | denim skirt | denim dress | underwear | shorts | yoga shorts",
+    "shoes": "sneakers | sandals | heels | boots"
+  },
+  "pose": "action pose | casual pose | formal pose | swimwear pose | lingerie pose",
+  "environment": "outdoor | indoor | beach | pool | bedroom | office | school | library | cafe | concert | movie | theater | museum | gallery | park | garden | forest | mountain | lake | river | sea | sky | sunset | sunrise",
+  "style": "photo-realistic",
+  "camera_angle": "medium shot | lookup angle | side angle",
+  "lighting": "natural | dramatic | cinematic | studio | soft light"
+}

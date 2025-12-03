@@ -489,7 +489,7 @@ This project includes a prompt generation tool that uses LLM to create detailed 
    GROK_MODEL=grok-3-mini
    ```
 
-2. Create a template file at `input/prompt_template.json` (a sample is provided)
+2. A default template file is provided at `src/generate_prompts/templates/default_template.json`
 
 ### Usage
 
@@ -536,7 +536,7 @@ Templates use JSON format with support for random selection using `|`:
 
 You can customize how the LLM expands template descriptions by providing your own instruction file. The instruction file is a text file containing the prompt sent to the LLM, with a `{template_description}` placeholder that will be replaced with the actual description.
 
-**Default instruction file:** `src/generate_prompts/instructions/default.txt`
+**Default instruction file:** `src/generate_prompts/instructions/default_instruction.txt`
 
 **Creating a custom instruction file:**
 
@@ -604,7 +604,11 @@ z-image-turbo/
 │       ├── __init__.py      # Package initialization
 │       ├── __main__.py      # Entry point for `python -m generate_prompts`
 │       ├── cli.py           # CLI with interactive/batch modes, variation generation
-│       └── generator.py     # PydanticAI/Ollama LLM integration, prompt sanitization
+│       ├── generator.py     # PydanticAI/Ollama LLM integration, prompt sanitization
+│       ├── instructions/    # LLM instruction templates
+│       │   └── default_instruction.txt  # Default instruction for prompt expansion
+│       └── templates/       # Prompt templates
+│           └── default_template.json  # Default template with subject/clothing/etc.
 ├── tests/
 │   ├── __init__.py
 │   ├── test_cli.py              # CLI unit tests
