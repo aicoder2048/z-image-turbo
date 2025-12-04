@@ -8,6 +8,9 @@ from pathlib import Path
 
 from generate_prompts.generator import (
     get_attribute_value,
+    resolve_template_value,
+    format_description,
+    create_generic_description,
     create_prompt_description,
     create_fallback_prompt,
     generate_variations,
@@ -53,12 +56,141 @@ class TestGetAttributeValue:
         assert get_attribute_value(["a", "b"]) == ["a", "b"]
 
 
+class TestResolveTemplateValue:
+    """Tests for resolve_template_value function."""
+
+    def test_simple_field(self):
+        """Test simple field access."""
+        template = {"style": "photo-realistic"}
+        assert resolve_template_value(template, "style") == "photo-realistic"
+
+    def test_nested_field(self):
+        """Test nested field access with dot notation."""
+        template = {"subject": {"type": "person", "age": "30"}}
+        assert resolve_template_value(template, "subject.type") == "person"
+        assert resolve_template_value(template, "subject.age") == "30"
+
+    def test_missing_field(self):
+        """Test missing field returns empty string."""
+        template = {"style": "photo-realistic"}
+        assert resolve_template_value(template, "missing") == ""
+        assert resolve_template_value(template, "subject.type") == ""
+
+    def test_with_pipe_selection(self):
+        """Test that pipe-separated values are resolved."""
+        template = {"style": "realistic | cartoon"}
+        result = resolve_template_value(template, "style")
+        assert result in ["realistic", "cartoon"]
+
+    def test_deep_nesting(self):
+        """Test deeply nested field access."""
+        template = {"a": {"b": {"c": "deep_value"}}}
+        assert resolve_template_value(template, "a.b.c") == "deep_value"
+
+    def test_empty_value(self):
+        """Test empty value returns empty string."""
+        template = {"style": ""}
+        assert resolve_template_value(template, "style") == ""
+
+
+class TestFormatDescription:
+    """Tests for format_description function."""
+
+    def test_basic_placeholder(self):
+        """Test basic placeholder replacement."""
+        template = {"style": "realistic", "environment": "park"}
+        format_str = "A {style} image in a {environment}"
+        result = format_description(template, format_str)
+        assert result == "A realistic image in a park"
+
+    def test_nested_placeholder(self):
+        """Test nested placeholder replacement."""
+        template = {"subject": {"type": "person", "expression": "smile"}}
+        format_str = "A {subject.type} with a {subject.expression}"
+        result = format_description(template, format_str)
+        assert result == "A person with a smile"
+
+    def test_missing_placeholder_cleanup(self):
+        """Test that missing placeholders are cleaned up."""
+        template = {"style": "realistic"}
+        format_str = "A {style} image ({missing})"
+        result = format_description(template, format_str)
+        # Empty parentheses should be removed
+        assert "()" not in result
+        assert "realistic" in result
+
+    def test_multiple_spaces_cleanup(self):
+        """Test that multiple spaces are normalized."""
+        template = {"a": "value"}
+        format_str = "Test  {missing}  text"
+        result = format_description(template, format_str)
+        assert "  " not in result
+
+    def test_comma_cleanup(self):
+        """Test that orphaned commas are cleaned up."""
+        template = {"a": "value"}
+        format_str = "Test, {missing}, more"
+        result = format_description(template, format_str)
+        assert ", ," not in result
+
+
+class TestCreateGenericDescription:
+    """Tests for create_generic_description function."""
+
+    def test_simple_template(self):
+        """Test generic description with simple fields."""
+        template = {"style": "realistic", "environment": "park"}
+        result = create_generic_description(template)
+        assert "style: realistic" in result
+        assert "environment: park" in result
+
+    def test_nested_template(self):
+        """Test generic description with nested fields."""
+        template = {"subject": {"type": "person", "age": "30"}}
+        result = create_generic_description(template)
+        assert "subject.type: person" in result
+        assert "subject.age: 30" in result
+
+    def test_empty_template(self):
+        """Test empty template returns placeholder text."""
+        result = create_generic_description({})
+        assert result == "Empty template"
+
+    def test_skips_description_format(self):
+        """Test that description_format field is skipped."""
+        template = {"description_format": "ignore this", "style": "realistic"}
+        result = create_generic_description(template)
+        assert "description_format" not in result
+        assert "style: realistic" in result
+
+
 class TestCreatePromptDescription:
     """Tests for create_prompt_description function."""
 
-    def test_basic_template(self):
-        """Test basic template description creation."""
+    def test_with_format_string(self):
+        """Test template with description_format uses it."""
         template = {
+            "description_format": "A {subject.type} in {environment}",
+            "subject": {"type": "person"},
+            "environment": "park",
+        }
+        description = create_prompt_description(template)
+        assert description == "A person in park"
+
+    def test_without_format_string_fallback(self):
+        """Test template without description_format uses generic fallback."""
+        template = {
+            "subject": {"type": "person"},
+            "environment": "park",
+        }
+        description = create_prompt_description(template)
+        assert "subject.type: person" in description
+        assert "environment: park" in description
+
+    def test_basic_template_with_format(self):
+        """Test basic template with description_format."""
+        template = {
+            "description_format": "A {subject.type} who is {subject.age}, {subject.ethnicity}, with {subject.expression} expression, wearing {clothing.top}, {clothing.bottom}, {clothing.shoes}, {pose} in {environment} with {style} style, {camera_angle} camera angle, {lighting} lighting",
             "subject": {
                 "type": "person",
                 "age": "30 years old",
@@ -87,6 +219,32 @@ class TestCreatePromptDescription:
         """Test empty template handling."""
         description = create_prompt_description({})
         assert description  # Should return some string, not raise error
+
+    def test_marvel_style_template(self):
+        """Test Marvel-style template with different structure."""
+        template = {
+            "description_format": "A {subject.type} ({subject.identity}) with {subject.attributes}, {subject.expression} expression, wearing {clothing.top} and {clothing.bottom}, in {pose} at {environment}, {style} style, {camera_angle}, {lighting} lighting",
+            "subject": {
+                "type": "Iron Man",
+                "identity": "Avenger",
+                "attributes": "armored suit",
+                "expression": "determined",
+            },
+            "clothing": {
+                "top": "armor plating",
+                "bottom": "armored leggings",
+            },
+            "pose": "hero landing pose",
+            "environment": "battlefield",
+            "style": "cinematic",
+            "camera_angle": "dynamic low angle",
+            "lighting": "dramatic",
+        }
+        description = create_prompt_description(template)
+        assert "Iron Man" in description
+        assert "Avenger" in description
+        assert "armored suit" in description
+        assert "battlefield" in description
 
 
 class TestCreateFallbackPrompt:

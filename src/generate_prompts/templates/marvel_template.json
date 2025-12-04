@@ -1,0 +1,19 @@
+{
+  "description_format": "A {subject.type} ({subject.identity}) with {subject.attributes}, {subject.expression} expression, wearing {clothing.top} and {clothing.bottom} with {clothing.shoes}, in {pose} at {environment}, {style} style, {camera_angle} camera angle, {lighting} lighting",
+  "subject": {
+    "type": "Iron Man | Captain America | Thor | Black Widow | Spider-Man | Doctor Strange | Hulk | Hawkeye | Scarlet Witch | Black Panther | Ant-Man | Star-Lord | Gamora | Loki",
+    "identity": "Avenger | Guardian of the Galaxy | S.H.I.E.L.D. Agent | Asgardian | Mutant | Sorcerer | Super Soldier | Genius Inventor",
+    "attributes": "armored suit | mystical powers | super strength | high-tech gadgets | combat specialist | enhanced agility | energy manipulation | flight capability",
+    "expression": "determined | heroic | fierce | confident | focused | battle-ready | calm power | intense gaze"
+  },
+  "clothing": {
+    "top": "armor plating | tactical suit upper armor | nano-tech chest piece | vibranium breastplate | leather combat top | high-tech fabric top",
+    "bottom": "combat pants | armored leggings | tactical suit lower armor | nano-tech leg plating | flexible battle pants",
+    "shoes": "combat boots | armored boots | tactical footwear"
+  },
+  "pose": "hero landing pose | action mid-air pose | power-charging pose | combat stance | iconic standing pose",
+  "environment": "battlefield | futuristic city | Avengers HQ | Stark Tower | Wakanda | Asgard | space station | alien planet | mystical temple | New York City skyline",
+  "style": "cinematic super-heroic | photo-realistic",
+  "camera_angle": "dynamic low angle | dramatic side angle | heroic medium shot",
+  "lighting": "dramatic | cinematic | glowing energy light | backlit power aura | studio hero lighting"
+}

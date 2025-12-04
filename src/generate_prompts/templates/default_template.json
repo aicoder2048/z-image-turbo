@@ -1,18 +1,20 @@
 {
   "subject": {
-    "type": "innocent looking girl | Gorgeous girl | Beautiful girl | Cute girl | Athletic girl",
-    "age": "14 years old | 15 years old | 16 years old | 17 years old | 18 years old | 19 years old",
-    "ethnicity": "English | Russian | Ukrainian | Polish | Spanish | French | German | Italian | Portuguese | Dutch | Swedish | Norwegian | Danish | Finnish | Greek",
-    "expression": "smile | cheerful smile | sexy smile | innocent smile | mischievous smile | seductive smile | seductive smile  and hands on hips | seductive smile and hands on hips and legs apart"
+    "type": "hero | adventurer | explorer | warrior | guardian | spy | ranger | knight | pilot | mage | scientist",
+    "identity": "protector | strategist | traveler | elite agent | scholar | inventor | commander | wanderer",
+    "attributes": "special abilities | high-tech gear | ancient artifacts | enhanced strength | elite combat skills | tactical intelligence | magical energy",
+    "expression": "determined | focused | confident | calm | intense | heroic | curious | bold"
   },
   "clothing": {
-    "top": "t-shirt | crop top | tight crop top | tank top | camisole | lace camisole | bralette top | tube top | off-shoulder top | off-shoulder blouse | halter top | deep v-neck top | plunging neckline top | satin top | silk blouse | sheer blouse | lace blouse | corset top | bustier top | button-up shirt | tied-front shirt | knit top | tight sweater | cardigan (open front) | leather jacket | denim jacket | bomber jacket | fitted sports top | yoga top",
-    "bottom": "shorts | bikini | skirt | dress | denim shorts | denim skirt | denim dress | underwear | shorts | yoga shorts",
-    "shoes": "sneakers | sandals | heels | boots"
+    "top": "battle armor | tactical suit | leather jacket | futuristic top | robe | tunic | protective vest | stealth suit",
+    "bottom": "combat pants | armored leggings | tactical trousers | explorer pants | long robe | flexible gear pants",
+    "shoes": "combat boots | armored boots | tactical footwear | explorer shoes"
   },
-  "pose": "action pose | casual pose | formal pose | swimwear pose | lingerie pose",
-  "environment": "outdoor | indoor | beach | pool | bedroom | office | school | library | cafe | concert | movie | theater | museum | gallery | park | garden | forest | mountain | lake | river | sea | sky | sunset | sunrise",
-  "style": "photo-realistic",
-  "camera_angle": "medium shot | lookup angle | side angle",
-  "lighting": "natural | dramatic | cinematic | studio | soft light"
+  "pose": "action pose | power pose | standing heroic pose | mid-motion dynamic pose | ready-for-battle pose",
+  "environment": "ancient ruins | futuristic city | forest trail | mountain cliff | space station | cyberpunk alley | mystical temple | battlefield | research lab",
+  "style": "cinematic | photo-realistic | stylized | digital painting | semi-realistic",
+  "camera_angle": "dynamic low angle | medium shot | three-quarter view | dramatic side angle",
+  "lighting": "cinematic | dramatic | soft atmospheric | glowing ambient | strong contrast",
+
+  "description_format": "A {subject.type} ({subject.identity}) with {subject.attributes}, showing a {subject.expression} expression, wearing {clothing.top} and {clothing.bottom} with {clothing.shoes}, in a {pose}, set in {environment}, rendered in {style} style, captured from a {camera_angle}, with {lighting} lighting."
 }

@@ -512,10 +512,13 @@ uv run generate_prompts -i my_instruction.txt
 
 ### Template Format
 
-Templates use JSON format with support for random selection using `|`:
+Templates use JSON format with support for:
+- **Random selection** using `|` separator
+- **Custom description format** using `description_format` field with `{path.to.field}` placeholders
 
 ```json
 {
+  "description_format": "A {subject.type} who is {subject.age}, with {subject.expression} expression, wearing {clothing.top} and {clothing.bottom}, in {environment}, {style} style, {camera_angle}, {lighting} lighting",
   "subject": {
     "type": "person | animal",
     "age": "young | old",
@@ -531,6 +534,24 @@ Templates use JSON format with support for random selection using `|`:
   "lighting": "natural | dramatic"
 }
 ```
+
+#### Description Format
+
+The `description_format` field allows you to define how template values are combined into a natural language description. Use `{field}` for top-level fields and `{parent.child}` for nested fields.
+
+**Example for Marvel characters:**
+```json
+{
+  "description_format": "A {subject.type} ({subject.identity}) with {subject.attributes}, {subject.expression} expression, in {pose} at {environment}",
+  "subject": {
+    "type": "Iron Man | Thor",
+    "identity": "Avenger | Asgardian",
+    "attributes": "armored suit | mystical powers"
+  }
+}
+```
+
+If `description_format` is not provided, the template will use a generic key-value format as fallback.
 
 ### Custom Instruction Files
 

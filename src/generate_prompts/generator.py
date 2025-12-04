@@ -198,46 +198,156 @@ def get_attribute_value(value, mode: str = "random"):
     return value.strip()
 
 
+def resolve_template_value(template: dict, path: str) -> str:
+    """Resolve a dot-notation path to get a value from the template.
+
+    Args:
+        template: The template dictionary
+        path: Dot-notation path like "subject.type" or "style"
+
+    Returns:
+        The resolved value after applying get_attribute_value(),
+        or empty string if path doesn't exist.
+    """
+    parts = path.split(".")
+    current = template
+
+    for part in parts:
+        if isinstance(current, dict) and part in current:
+            current = current[part]
+        else:
+            return ""
+
+    # Apply get_attribute_value to handle '|' random selection
+    return get_attribute_value(current) if current else ""
+
+
+def format_description(template: dict, format_string: str) -> str:
+    """Format a description using a template and format string with placeholders.
+
+    Args:
+        template: The template dictionary containing values
+        format_string: Format string with {path.to.field} placeholders
+
+    Returns:
+        Formatted description with placeholders replaced by values.
+    """
+    # Find all placeholders like {field} or {nested.field}
+    placeholder_pattern = re.compile(r'\{([^}]+)\}')
+
+    def replace_placeholder(match):
+        path = match.group(1)
+        return resolve_template_value(template, path)
+
+    result = placeholder_pattern.sub(replace_placeholder, format_string)
+
+    # Clean up multiple spaces
+    result = re.sub(r'\s+', ' ', result)
+    # Clean up empty parentheses like "()" or "( )"
+    result = re.sub(r'\(\s*\)', '', result)
+    # Clean up orphaned commas like ", ," or ",  ,"
+    result = re.sub(r',\s*,', ',', result)
+    # Clean up leading/trailing commas in phrases
+    result = re.sub(r',\s*$', '', result)
+    result = re.sub(r'^\s*,', '', result)
+    # Clean up comma followed by period
+    result = re.sub(r',\s*\.', '.', result)
+
+    return result.strip()
+
+
+def create_generic_description(template: dict) -> str:
+    """Create a generic description by iterating over all template fields.
+
+    Used as fallback when no description_format is provided.
+
+    Args:
+        template: The template dictionary
+
+    Returns:
+        A generic description in "key: value" format.
+    """
+    parts = []
+
+    def process_value(key: str, value):
+        """Process a single value, handling nested dicts."""
+        if isinstance(value, dict):
+            for sub_key, sub_value in value.items():
+                process_value(f"{key}.{sub_key}", sub_value)
+        elif isinstance(value, str) and value:
+            resolved = get_attribute_value(value)
+            if resolved:
+                parts.append(f"{key}: {resolved}")
+
+    for key, value in template.items():
+        # Skip description_format itself
+        if key == "description_format":
+            continue
+        process_value(key, value)
+
+    return ", ".join(parts) if parts else "Empty template"
+
+
 def create_prompt_description(template: dict) -> str:
-    """Create a description from the template attributes"""
+    """Create a description from the template attributes.
+
+    If the template has a 'description_format' field, uses it as a format string
+    with {path.to.field} placeholders. Otherwise, falls back to a generic
+    key-value description.
+
+    Args:
+        template: The template dictionary
+
+    Returns:
+        A natural language description of the template.
+    """
     try:
-        subject = template.get("subject", {})
-        clothing = template.get("clothing", {})
-        environment = template.get("environment", "")
-        style = template.get("style", "")
-        pose = template.get("pose", "")
-        camera_angle = template.get("camera_angle", "")
-        lighting = template.get("lighting", "")
+        # Check for custom format string
+        if "description_format" in template:
+            return format_description(template, template["description_format"])
 
-        subject_type = get_attribute_value(subject.get("type", ""))
-        age = get_attribute_value(subject.get("age", ""))
-        ethnicity = get_attribute_value(subject.get("ethnicity", ""))
-        expression = get_attribute_value(subject.get("expression", ""))
-
-        top = get_attribute_value(clothing.get("top", ""))
-        bottom = get_attribute_value(clothing.get("bottom", ""))
-        shoes = get_attribute_value(clothing.get("shoes", ""))
-
-        clothing_desc = f"wearing {top}, {bottom}, {shoes}"
-
-        environment = get_attribute_value(environment)
-        style = get_attribute_value(style)
-        pose = get_attribute_value(pose)
-        camera_angle = get_attribute_value(camera_angle)
-        lighting = get_attribute_value(lighting)
-
-        description = f"A {subject_type} who is {age}, {ethnicity}, and {expression}, {clothing_desc} {pose} in {environment} with {style} style"
-
-        if camera_angle:
-            description += f", {camera_angle} camera angle"
-
-        if lighting:
-            description += f", {lighting} lighting"
-
-        return description.strip()
+        # Fallback to generic description
+        return create_generic_description(template)
     except Exception as e:
         cprint(f"Error creating prompt description: {str(e)}", "red")
         return "Error creating description"
+
+
+def count_words(text: str) -> int:
+    """Count the number of words in a text string.
+
+    Uses simple whitespace splitting, which works for both English and
+    mixed Chinese/English text as a rough approximation.
+
+    Args:
+        text: The text to count words in.
+
+    Returns:
+        The number of words (whitespace-separated tokens).
+    """
+    if not text:
+        return 0
+    return len(text.split())
+
+
+def print_enhancement_stats(original: str, enhanced: str) -> None:
+    """Print statistics about prompt enhancement.
+
+    Args:
+        original: The original prompt before enhancement.
+        enhanced: The enhanced prompt after LLM processing.
+    """
+    original_words = count_words(original)
+    enhanced_words = count_words(enhanced)
+
+    if original_words > 0:
+        multiplier = enhanced_words / original_words
+        cprint(
+            f"Enhancement stats: {original_words} words → {enhanced_words} words ({multiplier:.1f}x)",
+            "magenta"
+        )
+    else:
+        cprint(f"Enhancement stats: 0 words → {enhanced_words} words", "magenta")
 
 
 def create_fallback_prompt(base_description: str) -> str:
@@ -300,7 +410,9 @@ def generate_detailed_prompt(
                 cprint(f"Attempt {attempt+1}/{MAX_RETRIES}: Sending request to {provider_name}...", "cyan")
                 result = agent.run_sync(prompt_instruction)
                 cprint(f"Received response from {provider_name}!", "green")
-                return result.output
+                enhanced_prompt = result.output
+                print_enhancement_stats(template_description, enhanced_prompt)
+                return enhanced_prompt
             except Exception as e:
                 cprint(f"Attempt {attempt+1}/{MAX_RETRIES} failed: {str(e)}", "yellow")
                 if attempt == MAX_RETRIES - 1:
@@ -310,7 +422,9 @@ def generate_detailed_prompt(
     except Exception as e:
         cprint(f"Error generating detailed prompt: {str(e)}", "red")
         cprint("Using fallback prompt generation method...", "yellow")
-        return create_fallback_prompt(template_description)
+        fallback_result = create_fallback_prompt(template_description)
+        print_enhancement_stats(template_description, fallback_result)
+        return fallback_result
 
 
 def save_prompts(prompts: list, output_file: str = DEFAULT_OUTPUT_FILE):

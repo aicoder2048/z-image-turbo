@@ -1,0 +1,20 @@
+{
+  "subject": {
+    "type": "Miss Universe contestant | Miss World contestant | Miss International contestant | Miss Europe contestant | Beauty Pageant Queen | Elegant Pageant Contestant",
+    "age": "18 years old | 19 years old | 20 years old | 21 years old | 22 years old | 23 years old | 24 years old",
+    "ethnicity": "White | European | Scandinavian | Eastern European | Western European",
+    "expression": "graceful smile | confident smile | elegant expression | poised expression | warm friendly smile | charismatic look"
+  },
+  "clothing": {
+    "top": "evening gown bodice | elegant formal dress top | sequined gown top | satin gown top | couture dress bodice",
+    "bottom": "floor-length gown | mermaid-style gown | A-line evening dress | high-slit formal dress | flowing pageant skirt",
+    "shoes": "high heels | crystal heels | elegant pumps"
+  },
+  "pose": "red carpet pose | stage presentation pose | elegant standing pose | poised walking pose | trophy ceremony pose",
+  "environment": "pageant stage | red carpet | award ceremony hall | spotlight runway | international competition venue | gala event",
+  "style": "photo-realistic | cinematic | fashion editorial | high-end beauty photography",
+  "camera_angle": "medium shot | full body shot | slightly low angle | three-quarter angle",
+  "lighting": "studio lighting | spotlight | soft glamour light | cinematic lighting | bright stage lighting",
+
+  "description_format": "A {subject.type}, {subject.age}, {subject.ethnicity}, showing a {subject.expression}, wearing a {clothing.top} and {clothing.bottom} with {clothing.shoes}, in a {pose}, set on a {environment}, rendered in {style}, captured from a {camera_angle}, under {lighting}."
+}
